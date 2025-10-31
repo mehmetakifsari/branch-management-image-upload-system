@@ -1,0 +1,20 @@
+# .htaccess - MIME ve cache kontrolü önerisi
+<IfModule mod_mime.c>
+  AddType text/css .css
+  AddType application/javascript .js
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType image/jpeg "access plus 1 week"
+  ExpiresByType image/png "access plus 1 week"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js)$">
+    # tarayıcı için kısa cache; CF tarafından override edilebilir
+    Header set Cache-Control "public, max-age=3600, s-maxage=3600"
+  </FilesMatch>
+</IfModule>

@@ -1,0 +1,200 @@
+/* assets/css/style.css
+   Complete stylesheet for front-end and panel (responsive)
+   Place this file at: public_html/pnl2/assets/css/style.css
+   After uploading, clear Cloudflare cache or use Developer Mode and refresh (Ctrl+F5).
+*/
+
+/* ---------- Variables / Root ---------- */
+:root{
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --accent: #0b63d6;
+  --muted: #6b7280;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --border: #e6e9ee;
+}
+
+/* ---------- Reset / Base ---------- */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;}
+body{background:var(--bg);color:#111827;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;line-height:1.45;font-size:15px}
+
+/* ---------- Containers ----------
+ Note:
+ - .container is the main panel container (default up to 920px).
+ - For small centered pages (front page, login) prefer .centered-card or .centered-small to avoid layout conflicts.
+*/
+.container {
+  max-width: 920px;
+  margin: 28px auto;
+  padding: 20px;
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(16,24,40,0.06);
+}
+
+/* small centered card for index/login (use class "centered-card" or "centered-small") */
+.centered-card, .centered-small {
+  max-width: 420px;
+  margin: 36px auto;
+  padding: 22px;
+  background: var(--card);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(16,24,40,0.06);
+  text-align: center;
+}
+
+/* Another explicit container for front pages (if you prefer edit HTML to add .front-container) */
+.front-container {
+  max-width: 420px;
+  margin: 36px auto;
+  padding: 20px;
+  background: var(--card);
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+/* ---------- Logo ---------- */
+.logo{display:block;margin:0 auto 18px;max-width:360px;height:auto;object-fit:contain}
+
+/* ---------- Forms / Inputs ---------- */
+label{display:block;font-size:13px;color:var(--muted);margin-top:12px;margin-bottom:6px}
+input[type="text"], input[type="file"], input[type="password"], textarea, select {
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:#fff;
+  font-size:14px;
+  color:#111827;
+  transition:box-shadow .12s ease, border-color .12s ease;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: rgba(11,99,214,0.25);
+  box-shadow: 0 6px 18px rgba(11,99,214,0.06);
+}
+
+/* ---------- Buttons ---------- */
+.btn-primary {
+  display:inline-block;
+  padding:10px 18px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+  transition:all .12s ease;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(11,99,214,0.12)}
+.btn-secondary {
+  padding:8px 14px;background:#f3f4f6;border-radius:8px;border:1px solid var(--border);color:#111827;
+}
+.btn-small{padding:6px 10px;font-size:13px}
+
+/* ---------- Messages ---------- */
+.error{color:var(--danger);margin-top:8px}
+.message{color:var(--success);margin-top:8px}
+
+/* ---------- File preview (front) ---------- */
+.preview{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;justify-content:center}
+.preview img{width:80px;height:auto;border-radius:5px;border:1px solid #ccc;object-fit:cover}
+
+/* ---------- Footer ---------- */
+.app-footer{
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#fff;border-top:1px solid var(--border);padding:8px 20px;font-size:13px;color:var(--muted);
+  display:flex;justify-content:space-between;align-items:center;z-index:1000;
+}
+
+/* ---------- Panel header / nav ---------- */
+header{background:#fff;border-bottom:1px solid var(--border)}
+header nav{display:flex;justify-content:center;gap:12px;padding:14px 8px;align-items:center;flex-wrap:wrap}
+header nav a{color:#374151;text-decoration:none;padding:8px 12px;border-radius:8px;font-weight:600}
+header nav a:hover{background:#f3f4f6;color:var(--accent)}
+.header-meta{text-align:center;color:var(--muted);font-size:13px;padding:8px 0 12px}
+
+/* ---------- Dashboard cards ---------- */
+.panel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:16px}
+.branch-card{padding:14px;border-radius:12px;background:#fff;border:2px solid rgba(15,23,42,0.03);display:flex;flex-direction:column;gap:8px}
+.branch-card h3{margin:0;font-size:18px}
+.branch-card p{margin:0;color:#374151}
+
+/* ---------- Branch tabs (horizontal) ---------- */
+.branch-tabs{display:flex;gap:12px;justify-content:center;margin:18px 0;flex-wrap:wrap}
+.branch-tab{padding:8px 14px;border-radius:8px;background:#fff;border:1px solid var(--border);color:#111827;text-decoration:none;font-weight:600}
+.branch-tab.active{background:var(--accent);color:#fff;border-color:rgba(11,99,214,0.2);box-shadow:0 8px 22px rgba(11,99,214,0.08)}
+
+/* ---------- Job header and gallery ---------- */
+.job-header{background:#f8fafc;padding:8px;border-radius:6px;margin:8px 0;font-weight:700;border:1px solid #e6eef8;color:#111827}
+.gallery{display:flex;gap:14px;flex-wrap:wrap;padding:12px 6px}
+.thumb-card{width:180px;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #eee;padding:8px;text-align:center;display:flex;flex-direction:column;gap:8px}
+.thumb-card img{width:100%;height:120px;object-fit:cover;border-radius:6px}
+.thumb-actions{margin-top:6px;font-size:13px;color:#374151}
+.thumb-actions a{color:var(--accent);text-decoration:none;margin:0 6px}
+.thumb-actions a:hover{text-decoration:underline}
+.file-placeholder{height:120px;display:flex;align-items:center;justify-content:center;color:#666;background:#fafafa;border-radius:6px}
+
+/* ---------- Logs table ---------- */
+.log-table{width:100%;border-collapse:collapse;margin-top:12px}
+.log-table th,.log-table td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:13px}
+.log-meta{color:var(--muted);font-size:12px}
+
+/* ---------- Tickets / Tables ---------- */
+table{width:100%;border-collapse:collapse}
+table th, table td{padding:10px;border-bottom:1px solid #eee;vertical-align:middle}
+.table-actions a{margin-right:8px;color:var(--accent)}
+
+/* ---------- Forms specific ---------- */
+.form-row{display:flex;gap:12px;align-items:center}
+.form-row .col{flex:1}
+
+/* ---------- Small screens ---------- */
+@media (max-width:720px){
+  .container, .centered-card, .centered-small {margin:12px;padding:14px;border-radius:10px}
+  .thumb-card{width:calc(50% - 12px)}
+  .preview img{width:72px;height:72px}
+  header nav{gap:6px;padding:10px}
+  .branch-tab{padding:6px 10px;font-size:14px}
+}
+
+/* ---------- Very small screens ---------- */
+@media (max-width:420px){
+  .thumb-card{width:100%}
+  .panel-grid{grid-template-columns:1fr}
+}
+
+/* ---------- Accessibility / focus ---------- */
+a:focus,button:focus,input:focus{outline:3px solid rgba(11,99,214,0.12);outline-offset:2px}
+
+/* ---------- Helper classes ---------- */
+.text-muted{color:var(--muted)}
+.center{text-align:center}
+
+/* ---------- Empty note ---------- */
+.empty-note{color:var(--muted);padding:18px;background:#fff;border-radius:8px;border:1px solid #f0f0f0}
+
+/* ---------- System live monitoring (admin-only) ---------- */
+/* two-column grid: left = terminal, right = stat cards (fixed width) */
+.sys-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start;max-width:1100px;margin:18px auto}
+@media (max-width:980px){.sys-grid{grid-template-columns:1fr}}
+#sysbox{background:#000;color:#0f0;padding:12px;border-radius:6px;height:260px;overflow:auto;font-family:monospace;font-size:13px;line-height:1.3;box-shadow:inset 0 0 18px rgba(0,255,0,0.02)}
+.sys-cards{display:flex;flex-direction:column;gap:12px}
+.sys-card{background:#fff;border:1px solid var(--border);padding:12px;border-radius:8px;box-shadow:0 6px 18px rgba(16,24,40,0.03);text-align:left}
+.sys-card h4{margin:0 0 6px 0;font-size:14px}
+.sys-card .val{font-size:20px;font-weight:700;color:#111827}
+
+/* ---------- Front page / Login compact styles (to avoid clashing use .centered-card) ----------
+   If you keep using class="container" on front/login pages, change them to class="centered-card" or "front-container".
+   Example change in HTML: <div class="centered-card"> ... </div>
+*/
+.centered-card .logo, .front-container .logo { max-width: 300px; margin-bottom: 20px; }
+
+/* ---------- Tiny tweaks for older panel pages ---------- */
+/* ensure preview and gallery spacing doesn't conflict */
+.preview .file-item, .thumb-card .file-item {display:inline-block;padding:8px 10px;background:#f8fafc;border-radius:8px}
+
+/* ---------- END OF CSS ---------- */

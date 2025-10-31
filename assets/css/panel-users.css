@@ -1,0 +1,221 @@
+/* assets/css/panel-users.css
+   CSS tailored for the provided users.php layout.
+   Place this file at: public_html/pnl2/assets/css/panel-users.css
+   The users.php you provided already includes this file via:
+     <link rel="stylesheet" href="<?php echo asset('/assets/css/panel-users.css'); ?>">
+   This stylesheet:
+   - Ensures all input controls (including inputs without explicit type) have consistent size, padding and border-radius.
+   - Keeps the simple layout used in your PHP (two-column grid) and improves spacing, mobile responsiveness and table appearance.
+   - Minimizes global impact by scoping most rules under .users-page and .card.
+*/
+
+/* Theme vars (easy to tweak) */
+:root {
+  --bg: #f7f9fb;
+  --card-bg: #ffffff;
+  --accent: #0b63d6;
+  --muted: #6b7280;
+  --border: #e6e9ee;
+  --shadow: 0 6px 18px rgba(16,24,40,0.03);
+}
+
+/* Page wrapper */
+.users-page {
+  max-width: 1100px;
+  margin: 18px auto;
+  padding: 12px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  color: #0f172a;
+  background: transparent;
+}
+
+/* Headings */
+.users-page h1 {
+  font-size: 26px;
+  margin: 0 0 12px 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+.users-page h2 {
+  font-size: 18px;
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Grid: left form and right users list */
+.users-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 920px) {
+  .users-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+
+/* Card box */
+.card {
+  background: var(--card-bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+/* Flash messages */
+.flash { padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+.flash-success { background: #ecfdf5; color: #065f46; border: 1px solid rgba(16,185,129,0.08); }
+.flash-error { background: #fff1f2; color: #7f1d1d; border: 1px solid rgba(220,38,38,0.08); }
+
+/* Small note helper */
+.small-note { font-size: 13px; color: var(--muted); margin-top: 10px; line-height: 1.4; }
+
+/* ============================
+   FORM CONTROLS (CONSISTENT)
+   - Targets inputs with and without type attribute
+   ============================ */
+.card input[type="text"],
+.card input[type="tel"],
+.card input[type="email"],
+.card input[type="number"],
+.card input[type="password"],
+.card input:not([type]),
+.card select,
+.card textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: #111827;
+  line-height: 1.2;
+  transition: box-shadow .12s ease, border-color .12s ease;
+}
+
+/* textarea larger initial height but same visual style */
+.card textarea { min-height: 96px; height: auto; padding-top: 10px; padding-bottom: 10px; }
+
+/* labels */
+.card label { display: block; margin-top: 12px; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
+
+/* focus */
+.card input:focus,
+.card select:focus,
+.card textarea:focus {
+  outline: none;
+  border-color: rgba(11,99,214,0.22);
+  box-shadow: 0 6px 18px rgba(11,99,214,0.06);
+}
+
+/* Reserve right padding for browser UI (password manager icons etc.) */
+.card input[type="text"],
+.card input[type="password"],
+.card input:not([type]) { padding-right: 44px; }
+
+/* If you have inline icon wrappers, helper */
+.input-icon-wrapper { position: relative; }
+.input-icon-wrapper .input-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .9; }
+
+/* ----------------------------
+   File input normalization
+   ---------------------------- */
+.card input[type="file"] {
+  height: 44px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fff;
+  vertical-align: middle;
+}
+.card input[type="file"]::file-selector-button,
+.card input[type="file"]::-webkit-file-upload-button,
+.card input[type="file"]::-moz-file-upload-button {
+  height: 32px;
+  padding: 6px 10px;
+  margin-right: 8px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* form action buttons */
+.form-actions { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  height: 44px;
+  cursor: pointer;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(11,99,214,0.12); }
+.btn-secondary {
+  background: #f3f4f6;
+  color: #0f172a;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  height: 44px;
+  cursor: pointer;
+}
+
+/* responsive for narrow screens */
+@media (max-width: 480px) {
+  .form-actions { flex-direction: column; align-items: stretch; }
+  .btn-primary, .btn-secondary { width: 100%; }
+}
+
+/* ============================
+   TABLE / LIST STYLES
+   ============================ */
+.users-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.users-table thead th {
+  text-align: left;
+  padding: 12px;
+  background: #fbfdff;
+  border-bottom: 1px solid #eef2f7;
+  color: #374151;
+  font-weight: 700;
+  font-size: 13px;
+}
+.users-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #334155;
+  vertical-align: middle;
+}
+.users-table tbody tr:hover { background: #fbfcff; }
+
+/* narrow id column */
+.users-table td:first-child { width: 64px; color: #94a3b8; font-weight: 600; }
+
+/* action links */
+.action-links a, .users-table a { color: var(--accent); text-decoration: none; margin-right: 8px; font-weight: 600; }
+.action-links a:hover { text-decoration: underline; }
+
+/* table scroll container */
+.table-scroll { overflow: auto; max-height: 640px; margin-top: 8px; }
+
+/* small helper text below table */
+.card .small-note { margin-top: 12px; }
+
+/* Minor utilities */
+.hidden { display: none !important; }
+.center { text-align: center; }
+
+/* Reduce specificity conflicts with other global styles */
+.users-page .card { padding: 14px; }
+.users-page input, .users-page select, .users-page textarea { font-family: inherit; }
+
+/* End of panel-users.css */
