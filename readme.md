@@ -2,7 +2,7 @@
 *(Şube Yönetim ve Görsel Yükleme Sistemi)*
 
 A PHP + PDO based multi-branch dashboard designed for uploading and managing images across different service branches.  
-Developed under **AMR Danışmanlık**, this system provides an easy-to-use interface for branch staff and admins to manage uploads, monitor system activity, and communicate effectively between branches.
+Developed under **Koçaslanlar Holding**, this system provides an easy-to-use interface for branch staff and admins to manage uploads, monitor system activity, and communicate effectively between branches.
 
 ---
 
@@ -48,28 +48,28 @@ Developed under **AMR Danışmanlık**, this system provides an easy-to-use inte
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/branch-management-image-upload.git
-   cd branch-management-image-upload
+   git clone https://github.com/mehmetakifsari/branch-management-image-upload-system.git
+   cd branch-management-image-upload-system
    ```
 
 2. **Set up database**
-   - Create a MySQL database (e.g., `amr_panel`)
+   - Create a MySQL database (e.g., `db_username`)
    - Import the provided SQL schema files (`user.sql`, `uploads.sql`, `settings.sql`)
    - Update `/database.php` with your DB credentials:
      ```php
      define('DB_HOST', 'localhost');
-     define('DB_NAME', 'amr_panel');
+     define('DB_NAME', 'db_username');
      define('DB_USER', 'root');
      define('DB_PASS', 'password');
      ```
 
 3. **Upload the project**
-   - Place all files under `/public_html/pnl2/` or your desired subdomain directory
+   - Place all files under `/public_html/` or your desired subdomain directory
    - Ensure `uploads/` folder has **write permissions (chmod 755 or 775)**
 
 4. **Access**
-   - Admin Panel → `https://yourdomain.com/pnl2/panel/`
-   - Front Upload Page → `https://yourdomain.com/pnl2/index.php`
+   - Admin Panel → `https://yourdomain.com/panel/`
+   - Front Upload Page → `https://yourdomain.com/index.php`
 
 ---
 
@@ -79,12 +79,11 @@ Developed under **AMR Danışmanlık**, this system provides an easy-to-use inte
 Example structure:
 ```
 📁 public_html/
- ├── pnl2/
- │   ├── panel/
- │   ├── uploads/
- │   ├── assets/
- │   ├── inc/
- │   └── database.php
+ ├── panel/
+ ├── uploads/
+ ├── assets/
+ ├── inc/
+ └── database.php
 ```
 
 ---
