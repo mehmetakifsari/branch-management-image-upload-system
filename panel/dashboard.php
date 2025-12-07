@@ -40,6 +40,7 @@ $lastUpload   = $lastRow['created_at'] ?? null;
 <!doctype html>
 <html lang="tr">
 <head>
+  <?php include __DIR__ . '/includes/chat-init.php'; ?>
   <?php require_once __DIR__ . '/../inc/head.php'; ?>
   <title>Panel - Dashboard</title>
   <style>
