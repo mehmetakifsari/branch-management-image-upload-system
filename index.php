@@ -158,7 +158,7 @@ try {
 
       <div class="field" id="vinContainer" style="display:none;">
         <label class="small-label" for="vin">VIN (Şasi No)</label>
-        <input type="text" name="vin" id="vin" placeholder="ŞASİ NO (VIN)" maxlength="25" pattern="[A-Z0-9\-]+" title="Sadece büyük harf, rakam ve kısa tire" />
+        <input type="text" name="vin" id="vin" placeholder="ŞASİ NO (VIN)" maxlength="25" pattern="[A-Z0-9\-]" title="Sadece büyük harf, rakam ve kısa tire" />
         <div class="hint">PDI işaretlendiğinde bu alanı doldurun.</div>
       </div>
 
@@ -166,6 +166,7 @@ try {
         <label class="small-label" for="files">Dosyalar</label>
         <div class="file-input-row">
           <input type="file" id="files" name="files[]" multiple accept=".tst,.pdf,.jpg,.jpeg,.png,.mp4,.oxps,.zip,.rar">
+          <!-- Default display text, not hardcoded filename chips -->
           <div class="custom-file-display" id="fileNames">Dosya seçilmedi</div>
         </div>
         <div id="fileError" class="file-error" style="display:none;"></div>

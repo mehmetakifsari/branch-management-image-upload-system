@@ -1,7 +1,7 @@
 <?php
 // public_html/pnl2/upload.php
-// Updated: use client-provided branch (POST['branch']) when present (PDI flow).
-// Validates branch; falls back to isemri-first-digit if provided; otherwise 0.
+// Güncelleme: PDI akışında isemri sütununa 'PDI' kaydedilir (boş bırakılmaz).
+// Ayrıca POST['branch'] öncelikli kullanılmaya devam eder.
 
 require_once __DIR__ . '/inc/helpers.php';
 require_once __DIR__ . '/database.php';
@@ -30,7 +30,6 @@ if ($pdi) {
         header('Location: ' . asset('/'));
         exit;
     }
-    // Also require branch selection server-side (frontend enforces, but validate here too)
     if ($branchPost === '') {
         $_SESSION['flash_error'] = 'PDI seçili ise lütfen şube seçin.';
         header('Location: ' . asset('/'));
@@ -47,7 +46,7 @@ if ($pdi) {
 // Normalize inputs
 $plaka = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $plaka));
 $vin = strtoupper(preg_replace('/[^A-Z0-9\-]/i', '', $vin));
-$branchPost = preg_replace('/[^0-9]/', '', $branchPost); // keep digits only
+$branchPost = preg_replace('/[^0-9]/', '', $branchPost);
 
 // isemri validation if provided
 if ($isemri !== '' && !preg_match('/^[0-9]{8}$/', $isemri)) {
@@ -89,7 +88,9 @@ $branch_code_int = ($branch_code !== null) ? (int)$branch_code : 0;
 // Naming helpers
 $year = date('Y');
 $namePlate = $plaka !== '' ? $plaka : ($vin !== '' ? $vin : 'NOPLATE');
-$nameIsemri = $isemri !== '' ? $isemri : 'PDI';
+// IMPORTANT: storeable_isemri is what we will save into DB isemri column
+$storeable_isemri = ($isemri !== '' ? $isemri : 'PDI');
+$nameIsemri = $storeable_isemri; // used for folder naming
 
 // Files check
 if (empty($_FILES['files'])) {
@@ -128,7 +129,7 @@ if (!is_writable($targetDir) || !is_writable($thumbDir)) {
     exit;
 }
 
-// Helper functions
+// Helper functions (kept from original)
 function next_index_for_base($dir, $base, $typePrefix = '', $exts = []) {
     $max = 0;
     $files = @scandir($dir);
@@ -341,18 +342,19 @@ if (empty($files_info)) {
 }
 
 // Insert into DB (branch_code from branch_code_int)
+// IMPORTANT: save storeable_isemri into isemri column (so PDI saved as 'PDI')
 try {
     $db = db_connect();
     $stmt = $db->prepare("INSERT INTO uploads (plaka, isemri, branch_code, files_json, created_at) VALUES (:plaka, :isemri, :branch, :files, NOW())");
     $stmt->execute([
         ':plaka' => $plaka,
-        ':isemri' => $isemri,
+        ':isemri' => $storeable_isemri,
         ':branch' => $branch_code_int,
         ':files' => json_encode($files_info, JSON_UNESCAPED_UNICODE)
     ]);
     if (function_exists('log_action')) {
         log_action('upload', [
-            'isemri' => $isemri,
+            'isemri' => $storeable_isemri,
             'plaka' => $plaka,
             'branch_code' => $branch_code_int,
             'files' => array_map(function($f){ return $f['stored']; }, $files_info)

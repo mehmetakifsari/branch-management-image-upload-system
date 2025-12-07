@@ -3,3 +3,7 @@
 2025-12-07 18:25:58 | ACTION: upload | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"isemri":"","plaka":"","branch_code":0,"files":["2025-PDI-456987123-1.jpg"]}
 2025-12-07 18:31:19 | ACTION: upload | USER: anonymous | IP: 37.130.75.214 | DEVICE: Mobile | DETAILS: {"isemri":"","plaka":"","branch_code":0,"files":["2025-PDI-235874693-1.jpg"]}
 2025-12-07 18:34:49 | ACTION: upload | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"isemri":"","plaka":"","branch_code":4,"files":["2025-PDI-475896321-1.jpg"]}
+2025-12-07 18:50:39 | ACTION: delete_file | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"file":"2025-PDI-475896321-1.jpg","upload_id":23}
+2025-12-07 18:51:41 | ACTION: delete_file | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"file":"2025-41207002-500360347-1.jpg","upload_id":19}
+2025-12-07 19:17:58 | ACTION: upload | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"isemri":"PDI","plaka":"","branch_code":4,"files":["2025-PDI-VF611A366RD012579-1.jpg"]}
+2025-12-07 19:24:45 | ACTION: upload | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"isemri":"PDI","plaka":"","branch_code":4,"files":["2025-PDI-VF611A366RD012579-2.jpg","2025-PDI-VF611A366RD012579-4.jpg","2025-PDI-VF611A366RD012579-7.jpg","2025-PDI-VF611A366RD012579-11.jpg"]}
