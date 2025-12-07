@@ -48,15 +48,59 @@
   var lastSoundAt = 0;
   var SOUND_MIN_INTERVAL = 800; // ms
 
-  // Try to create an HTMLAudioElement for a bundled sound file
+  // Try to create an HTMLAudioElement for a bundled sound file, with HEAD/GET detection + blob fallback
   var audioEl = null;
   var soundUrl = (window.CHAT_BASE || '') + '/assets/sounds/notify.mp3';
   (function tryLoadAudio() {
-    audioEl = new Audio(soundUrl);
-    audioEl.preload = 'auto';
-    // try to load; if fails we'll fallback to WebAudio
-    audioEl.addEventListener('error', function () {
-      audioEl = null;
+    var url = soundUrl;
+    // Try HEAD first to confirm existence
+    fetch(url, { method: 'HEAD', credentials: 'same-origin' }).then(function (r) {
+      if (r && r.ok) {
+        // create audio element and attempt to preload
+        audioEl = new Audio(url);
+        audioEl.preload = 'auto';
+        audioEl.addEventListener('error', function () { audioEl = null; });
+        try { audioEl.load(); } catch (e) { /* ignore */ }
+      } else {
+        // HEAD failed or not ok -> try GET and create blob URL
+        fetch(url, { method: 'GET', credentials: 'same-origin' })
+          .then(function(resp){
+            if (!resp.ok) throw new Error('audio GET failed');
+            return resp.blob();
+          })
+          .then(function(blob){
+            try {
+              audioEl = new Audio(URL.createObjectURL(blob));
+              audioEl.preload = 'auto';
+              audioEl.addEventListener('error', function(){ audioEl = null; });
+            } catch (e) {
+              audioEl = null;
+            }
+          })
+          .catch(function(){
+            // network failed -> leave audioEl null (WebAudio fallback will be used)
+            audioEl = null;
+          });
+      }
+    }).catch(function () {
+      // HEAD request itself failed (CORS or network) -> try GET+blob
+      fetch(url, { method: 'GET', credentials: 'same-origin' })
+        .then(function(resp){
+          if (!resp.ok) throw new Error('audio GET failed');
+          return resp.blob();
+        })
+        .then(function(blob){
+          try {
+            audioEl = new Audio(URL.createObjectURL(blob));
+            audioEl.preload = 'auto';
+            audioEl.addEventListener('error', function(){ audioEl = null; });
+          } catch (e) {
+            audioEl = null;
+          }
+        })
+        .catch(function(){
+          audioEl = null;
+        });
     });
   })();
 
@@ -97,13 +141,17 @@
 
     // First, try HTMLAudio
     if (audioEl) {
-      // Some browsers disallow autoplay until user gesture — resume context on touch/click
-      var playPromise = audioEl.play();
-      if (playPromise !== undefined) {
+      // Some browsers disallow autoplay until user gesture — attempt to play and fallback
+      var playPromise;
+      try { playPromise = audioEl.play(); } catch (e) { playPromise = null; }
+      if (playPromise && typeof playPromise.then === 'function') {
         playPromise.catch(function (err) {
           // fallback to WebAudio
           playBeep(880, 0.12);
         });
+      } else if (!playPromise) {
+        // fallback to WebAudio
+        playBeep(880, 0.12);
       }
       return;
     }
@@ -176,6 +224,11 @@
     if (ctx && ctx.state === 'suspended') {
       ctx.resume().catch(function(){});
     }
+    // Try to play short silent audioEl to unlock playback on mobile/desktop
+    if (audioEl) {
+      try { audioEl.play().then(function(){ audioEl.pause(); audioEl.currentTime = 0; }).catch(function(){ /*ignore*/ }); }
+      catch (e) {}
+    }
   }
   document.addEventListener('click', userGestureInit, { once: true });
   document.addEventListener('keydown', userGestureInit, { once: true });
@@ -184,7 +237,7 @@
     soundEnabled = !soundEnabled;
     localStorage.setItem(SOUND_KEY, soundEnabled ? '1' : '0');
     updateSoundButtonUI();
-    // hint: play short sound when enabling to confirm (if allowed)
+    // play a short sound to confirm when enabling (if allowed)
     if (soundEnabled) playNotificationSound();
   });
 
