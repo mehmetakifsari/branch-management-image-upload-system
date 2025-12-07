@@ -48,7 +48,7 @@ try {
     }
 
     .container {
-      background: #ffffff;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
       padding: 26px 28px;
       border-radius: 14px;
       box-shadow: 0 10px 30px rgba(15,23,42,0.08);
@@ -65,7 +65,7 @@ try {
     .field { margin: 12px 0; }
     .small-label { display:block; margin-bottom:8px; font-size:13px; color:#374151; font-weight:600; letter-spacing:.2px; }
 
-    input[type="text"], input[type="file"], select, .custom-file-display, button {
+    input[type="text"], select, .custom-file-display, button, .file-label {
       margin: 0;
       padding: 10px 12px;
       width: 100%;
@@ -75,11 +75,10 @@ try {
       color: #0F172A;
       font-size: 14px;
       outline: none;
-      transition: border-color .12s ease, box-shadow .12s ease;
-      text-transform: uppercase;
+      transition: border-color .12s ease, box-shadow .12s ease, transform .05s ease;
     }
 
-    input[type="text"]:focus, select:focus, input[type="file"]:focus, button:focus { border-color:#2563EB; box-shadow:0 0 0 6px rgba(37,99,235,0.06); }
+    input[type="text"]:focus, select:focus, .file-label:focus, .custom-file-display:focus, button:focus { border-color:#2563EB; box-shadow:0 0 0 6px rgba(37,99,235,0.06); }
 
     .toggle-container { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
     .toggle-container input[type="checkbox"] { width:18px; height:18px; accent-color:#2563EB; }
@@ -89,31 +88,80 @@ try {
     .branch-picker-inline { margin-top:8px; display:none; }
     .branch-select { text-transform: none; }
 
-    .file-input-row { display:flex; gap:10px; align-items:center; }
-    .file-input-row input[type="file"] { width:auto; padding:0; border:none; background:transparent; font-size:0; }
-    input[type="file"]::file-selector-button { padding:8px 12px; margin-right:8px; border:1px solid #CBD5E1; background:#fff; border-radius:8px; cursor:pointer; font-weight:700; color:#0F172A; font-size:13px; }
-    input[type="file"]::-webkit-file-upload-text { display:none; }
-    input[type="file"]::-webkit-file-upload-button { font-size:13px; }
+    /* FILE INPUT AREA */
+    .file-input-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    /* hide native file input, use label as button */
+    input[type="file"] { display: none; }
 
-    .custom-file-display { background:#F8FAFC; border:1px solid #EDF2F7; color:#374151; padding:10px 12px; border-radius:10px; min-height:44px; display:flex; align-items:center; gap:8px; flex:1; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-transform:none; }
+    .file-label {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:8px 14px;
+      width:auto;
+      min-width:140px;
+      border-radius:10px;
+      background:#ffffff;
+      border:1px solid #E6E9EE;
+      cursor:pointer;
+      box-shadow: 0 2px 6px rgba(16,24,40,0.04);
+      font-weight:700;
+      color:#0F172A;
+      text-transform:none;
+    }
+    .file-label:hover { transform: translateY(-1px); }
+
+    button.primary {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:10px 18px;
+      min-width:160px;
+      border-radius:10px;
+      background: linear-gradient(180deg,#2563EB,#1D4ED8);
+      color:white;
+      border:none;
+      cursor:pointer;
+      font-weight:700;
+      box-shadow: 0 6px 18px rgba(37,99,235,0.18);
+    }
+    button.primary:hover { filter:brightness(.98); transform: translateY(-1px); }
+
+    .custom-file-display {
+      background:#F8FAFC;
+      border:1px solid #EDF2F7;
+      color:#374151;
+      padding:10px 12px;
+      border-radius:10px;
+      min-height:44px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:1;
+      justify-content:center;
+      font-size:13px;
+      text-align:center;
+    }
 
     .file-error { margin-top:8px; color:#B91C1C; font-size:13px; font-weight:600; }
 
     .preview { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start; }
     .preview img { width:92px; height:auto; border:1px solid #E6E9EE; border-radius:8px; object-fit:cover; }
 
-    .file-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; background:#F8FAFC; border:1px solid #EDF2F7; color:#334155; font-size:13px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .file-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; background:#F8FAFC; border:1px solid #EDF2F7; color:#334155; font-size:13px; max-width:260px; overflow:hidden; }
     .file-icon { width:34px; height:34px; background:#E6EEF9; color:#2563EB; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; font-weight:700; font-size:13px; }
 
     .remove-btn { margin-left:8px; background:transparent; border:none; color:#9CA3AF; cursor:pointer; font-size:16px; line-height:1; padding:2px 6px; border-radius:6px; }
     .remove-btn:hover { background:rgba(0,0,0,0.04); color:#ef4444; }
 
-    .filename-chip { display:inline-flex; align-items:center; gap:8px; background:#fff; border-radius:8px; padding:6px 8px; border:1px solid #E6E9EE; margin-right:6px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:#1f2937; text-transform:none; }
+    .filename-chip { display:inline-flex; align-items:center; gap:8px; background:#fff; border-radius:8px; padding:6px 8px; border:1px solid #E6E9EE; margin-right:6px; max-width:160px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 
     .hint { font-size:12px; color:#6B7280; margin-top:6px; }
 
-    input[type="submit"], button.primary { width:100%; padding:10px 14px; background-color:#2563EB; color:white; border:none; cursor:pointer; border-radius:10px; margin-top:12px; font-size:15px; font-weight:700; box-shadow:0 8px 22px rgba(37,99,235,0.12); }
-    input[type="submit"]:hover, button.primary:hover { filter:brightness(.98); }
+    input[type="submit"] { width:100%; padding:12px 14px; background-color:#2563EB; color:white; border:none; cursor:pointer; border-radius:10px; margin-top:12px; font-size:15px; font-weight:700; box-shadow: 0 6px 18px rgba(37,99,235,0.18); }
+    input[type="submit"]:hover { filter:brightness(.98); }
 
     /* Camera overlay */
     .camera-overlay {
@@ -125,6 +173,8 @@ try {
       justify-content:center;
       z-index:9999;
       padding:20px;
+      /* allow top safe-area on modern phones */
+      padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
     }
     .camera-panel {
       background:#fff;
@@ -138,6 +188,9 @@ try {
       gap:8px;
       align-items:center;
       position:relative;
+      /* ensure panel doesn't exceed viewport on mobile and can scroll */
+      max-height: calc(100vh - 40px);
+      overflow: auto;
     }
     .camera-video { width:100%; border-radius:8px; background:#000; max-height:70vh; object-fit:contain; touch-action: none; }
     .camera-controls { display:flex; gap:8px; align-items:center; }
@@ -157,7 +210,32 @@ try {
       transition:opacity .25s ease, transform .25s ease;
     }
 
-    @media (max-width:480px) { .container{padding:18px;} .logo{width:180px;} .zoom-slider{width:140px;} }
+    @media (max-width:480px) {
+      .container{padding:18px;}
+      .logo{width:180px;}
+      .zoom-slider{width:140px;}
+      .file-input-row { gap:8px; }
+      .file-label, button.primary { width:100%; min-width:unset; }
+      .custom-file-display { width:100%; order: 3; }
+
+      /* On small devices show camera panel from top so the top of video is visible.
+         Desktop/large screens keep centered. */
+      .camera-overlay {
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: calc(env(safe-area-inset-top, 8px) + 12px);
+      }
+      .camera-panel {
+        margin-top: 6px;
+        max-height: calc(100vh - 80px); /* leave space for browser chrome + controls */
+        border-radius: 10px;
+      }
+      /* Make video a bit shorter so controls and descriptions are visible below */
+      .camera-video {
+        max-height: calc(100vh - 220px);
+        height: auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -206,12 +284,21 @@ try {
 
       <div class="field">
         <label class="small-label" for="files">Dosyalar</label>
-        <div class="file-input-row">
+
+        <div class="file-input-row" role="group" aria-label="Dosya seçimi">
+          <!-- native file input (hidden) -->
           <input type="file" id="files" name="files[]" multiple accept=".tst,.pdf,.jpg,.jpeg,.png,.mp4,.oxps,.zip,.rar">
-          <!-- Buttons: choose files and take photo -->
-          <button type="button" id="captureBtn" class="primary" style="width:auto;padding:8px 12px;margin-left:6px;">Fotoğraf Çek</button>
-          <div class="custom-file-display" id="fileNames">Dosya seçilmedi</div>
+
+          <!-- nicer styled label acting as "Choose files" button -->
+          <label for="files" class="file-label" title="Dosyaları seç">Dosyaları Seç</label>
+
+          <!-- capture button -->
+          <button type="button" id="captureBtn" class="primary" style="width:auto;padding:10px 16px;">FOTOĞRAF ÇEK</button>
+
+          <!-- file names / status -->
+          <div class="custom-file-display" id="fileNames" aria-live="polite">Dosya seçilmedi</div>
         </div>
+
         <div id="fileError" class="file-error" style="display:none;"></div>
         <div class="hint">İzin verilen uzantılar: .tst, .pdf, .jpg, .jpeg, .png, .mp4, .oxps, .zip, .rar. Görseller için önizleme gösterilir. Sunucu tarafı kontrolleri yapılmalıdır.</div>
       </div>

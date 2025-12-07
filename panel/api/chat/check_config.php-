@@ -1,0 +1,21 @@
+<?php
+// debug only - remove after use
+header('Content-Type: application/json; charset=utf-8');
+$out = [];
+
+// realpath / existence
+$path = realpath(__DIR__ . '/../../../config.php');
+$out['config_path'] = $path ? $path : (__DIR__ . '/../../../config.php');
+$out['exists'] = file_exists(__DIR__ . '/../../../config.php');
+$out['perms'] = $out['exists'] ? substr(sprintf('%o', fileperms(__DIR__ . '/../../../config.php')), -4) : null;
+
+// include attempt - capture return
+$maybe = @include_once __DIR__ . '/../../../config.php';
+$out['include_return_is_array'] = is_array($maybe);
+$out['include_return_sample'] = is_array($maybe) ? array_intersect_key($maybe, array_flip(['db_host','db_user','db_name'])) : null;
+
+// check if $config var exists in global scope
+$out['config_var_exists'] = isset($config) && is_array($config);
+$out['config_var_sample'] = $out['config_var_exists'] ? array_intersect_key($config, array_flip(['db_host','db_user','db_name'])) : null;
+
+echo json_encode($out, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
