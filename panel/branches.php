@@ -1,8 +1,9 @@
 <?php
-// public_html/pnl2/panel/branches.php
+// branch.php  (based on original public_html/pnl2/panel/branches.php)
 // - Şube içindeki iş emirlerini sayfalandırır (50/adet).
 // - Her iş emrinin başlığında son yükleme zamanı gösterilir.
 // - [+] toggle ile load_images.php?job=...&b=... üzerinden görseller çekilir.
+// - Sıralama: isemri kodlamasına göre ay/gün/dosya DESC olacak şekilde (1. ay en altta, son ay/gün üstte).
 
 require_once __DIR__ . '/../inc/auth.php';
 require_login();
@@ -41,6 +42,7 @@ if ($b) {
 
     // Sayfalı liste:
     // plaka genelde iş emrine özgüdür; güvenli toplulaştırma için MIN(plaka) kullanıyoruz
+    // isemri formatı beklenen şekilde (ör: 41129005) ise aşağıdaki SUBSTRING ifadeleri doğru çalışır.
     $sql = "
         SELECT 
             isemri,
@@ -49,7 +51,10 @@ if ($b) {
         FROM uploads
         WHERE branch_code = :b
         GROUP BY isemri
-        ORDER BY last_created DESC
+        ORDER BY
+            CAST(SUBSTRING(isemri, 2, 2) AS UNSIGNED) DESC,  -- ay (MM) DESC: son ay üstte
+            CAST(SUBSTRING(isemri, 4, 2) AS UNSIGNED) DESC,  -- gün (DD) DESC
+            CAST(SUBSTRING(isemri, 6)      AS UNSIGNED) DESC -- dosya no (NNN) DESC
         LIMIT :limit OFFSET :offset
     ";
     $stmt = $db->prepare($sql);
@@ -58,6 +63,41 @@ if ($b) {
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $jobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fallback: DB tarafında beklenmedik format olursa PHP ile aynı mantığı uygulayarak sıralama garanti edilir.
+    if (!empty($jobs)) {
+        usort($jobs, function($a, $bRow) {
+            $codeA = isset($a['isemri']) ? trim($a['isemri']) : '';
+            $codeB = isset($bRow['isemri']) ? trim($bRow['isemri']) : '';
+
+            // Normalize: en az 8 hane bekliyoruz; kısa ise sol tarafı 0 ile doldur
+            $codeA = str_pad($codeA, 8, "0", STR_PAD_LEFT);
+            $codeB = str_pad($codeB, 8, "0", STR_PAD_LEFT);
+
+            // PHP substr 0-based: branch(0,1), month(1,2), day(3,2), file(5)
+            $parse = function($c) {
+                return [
+                    'branch' => (int) substr($c, 0, 1),
+                    'month'  => (int) substr($c, 1, 2),
+                    'day'    => (int) substr($c, 3, 2),
+                    'file'   => (int) substr($c, 5)    // geri kalan tüm kısmı dosya numarası kabul ediyoruz
+                ];
+            };
+
+            $pA = $parse($codeA);
+            $pB = $parse($codeB);
+
+            // Eğer farklı şubeler sıralanıyorsa şube artan sırada bırak (veya ihtiyaç varsa değiştir)
+            if ($pA['branch'] !== $pB['branch']) {
+                return $pA['branch'] < $pB['branch'] ? -1 : 1;
+            }
+            // İstenen ters mantık: month DESC, day DESC, file DESC
+            if ($pA['month'] !== $pB['month']) return $pB['month'] - $pA['month'];
+            if ($pA['day']   !== $pB['day'])   return $pB['day']   - $pA['day'];
+            if ($pA['file']  !== $pB['file'])  return $pB['file']  - $pA['file'];
+            return 0;
+        });
+    }
 }
 
 $totalPages = $b ? max((int)ceil($totalJobs / $perPage), 1) : 1;
@@ -72,6 +112,8 @@ $qsPrefix = $qs ? ('?' . $qs . '&') : '?';
 <html lang="tr">
 <head>
   <?php require_once __DIR__ . '/../inc/head.php'; ?>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Şubeler</title>
   <style>
     /* küçük ekstra stiller toggle ve loader için (conflict azaltmak için target'lı) */

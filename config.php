@@ -5,9 +5,9 @@
 
 return [
     'db_host' => 'localhost',
-    'db_name' => 'sirtkoyu_pnl',
-    'db_user' => 'sirtkoyu_pnl',
-    'db_pass' => 'UrouesQAqbOzgxa7',
+    'db_name' => 'visupanel_p1',
+    'db_user' => 'visupanel_p1',
+    'db_pass' => 'o}QawGrmqzP7qH-U',
     // Uygulamanın web dizin yolu (domain.com/pnl2 ise '/pnl2', kökse '')
-    'base_url' => '/pnl2',
+    'base_url' => '/p1',
 ];

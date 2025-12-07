@@ -1,10 +1,7 @@
 <?php
 // public_html/pnl2/upload.php
-// - Deterministic sequential naming: YEAR-ISEMRI-PLAKA-1.jpg, -2.jpg, ...
-// - Optimize original image (resize / re-encode) and also create thumb files:
-//     thumbs/thumb-YEAR-ISEMRI-PLAKA-1.jpg etc.
-// - Store files_json entries with 'stored','path' (original public) and 'thumb' (thumb public).
-// - On success redirect to home with flash message.
+// Updated: use client-provided branch (POST['branch']) when present (PDI flow).
+// Validates branch; falls back to isemri-first-digit if provided; otherwise 0.
 
 require_once __DIR__ . '/inc/helpers.php';
 require_once __DIR__ . '/database.php';
@@ -19,48 +16,90 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Basic inputs
+// Read inputs
+$pdi = isset($_POST['pdi']) && (string)$_POST['pdi'] === '1';
 $plaka = isset($_POST['plaka']) ? trim((string)$_POST['plaka']) : '';
 $isemri = isset($_POST['isemri']) ? trim((string)$_POST['isemri']) : '';
+$vin = isset($_POST['vin']) ? trim((string)$_POST['vin']) : '';
+$branchPost = isset($_POST['branch']) ? trim((string)$_POST['branch']) : '';
 
-if ($plaka === '' || $isemri === '') {
-    $_SESSION['flash_error'] = 'Plaka ve İş Emri zorunludur.';
-    header('Location: ' . asset('/'));
-    exit;
+// Basic server-side validation
+if ($pdi) {
+    if ($vin === '') {
+        $_SESSION['flash_error'] = 'PDI seçili ise VIN (Şasi No) zorunludur.';
+        header('Location: ' . asset('/'));
+        exit;
+    }
+    // Also require branch selection server-side (frontend enforces, but validate here too)
+    if ($branchPost === '') {
+        $_SESSION['flash_error'] = 'PDI seçili ise lütfen şube seçin.';
+        header('Location: ' . asset('/'));
+        exit;
+    }
+} else {
+    if ($plaka === '' || $isemri === '') {
+        $_SESSION['flash_error'] = 'Plaka ve İş Emri zorunludur.';
+        header('Location: ' . asset('/'));
+        exit;
+    }
 }
 
-// Normalize plaka (remove spaces/specials, uppercase)
+// Normalize inputs
 $plaka = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $plaka));
-if ($plaka === '') {
-    $_SESSION['flash_error'] = 'Geçersiz plaka.';
-    header('Location: ' . asset('/'));
-    exit;
-}
+$vin = strtoupper(preg_replace('/[^A-Z0-9\-]/i', '', $vin));
+$branchPost = preg_replace('/[^0-9]/', '', $branchPost); // keep digits only
 
-// Validate isemri digits
-if (!preg_match('/^[0-9]{8}$/', $isemri)) {
+// isemri validation if provided
+if ($isemri !== '' && !preg_match('/^[0-9]{8}$/', $isemri)) {
     $_SESSION['flash_error'] = 'İş Emri 8 haneli olmalıdır.';
     header('Location: ' . asset('/'));
     exit;
 }
 
-$year = date('Y');
+// Branch map & validation
 $branch_map = ['1'=>'Bursa','2'=>'İzmit','3'=>'Orhanlı','4'=>'Hadımköy','5'=>'Keşan'];
-$branch_code = $branch_map[$isemri[0]] ? $isemri[0] : null;
-if (!$branch_code) {
-    $_SESSION['flash_error'] = 'İş Emri numarası geçersiz şube kodu içeriyor.';
-    header('Location: ' . asset('/'));
-    exit;
+$branch_code = null;
+
+// Priority 1: if branch provided in POST and valid, use it
+if ($branchPost !== '') {
+    if (isset($branch_map[$branchPost])) {
+        $branch_code = (int)$branchPost;
+    } else {
+        $_SESSION['flash_error'] = 'Geçersiz şube seçimi.';
+        header('Location: ' . asset('/'));
+        exit;
+    }
 }
 
+// Priority 2: if isemri present and valid, derive branch from first digit
+if ($branch_code === null && $isemri !== '') {
+    $first = $isemri[0];
+    if (isset($branch_map[$first])) {
+        $branch_code = (int)$first;
+    } else {
+        $_SESSION['flash_error'] = 'İş Emri numarası geçersiz şube kodu içeriyor.';
+        header('Location: ' . asset('/'));
+        exit;
+    }
+}
+
+// If still null, set default (0) to satisfy DB NOT NULL constraint
+$branch_code_int = ($branch_code !== null) ? (int)$branch_code : 0;
+
+// Naming helpers
+$year = date('Y');
+$namePlate = $plaka !== '' ? $plaka : ($vin !== '' ? $vin : 'NOPLATE');
+$nameIsemri = $isemri !== '' ? $isemri : 'PDI';
+
+// Files check
 if (empty($_FILES['files'])) {
     $_SESSION['flash_error'] = 'Dosya seçilmedi.';
     header('Location: ' . asset('/'));
     exit;
 }
 
-// Allowed extensions
-$allowed = ['jpg','jpeg','png','gif','pdf','zip','rar','tst'];
+// Allowed extensions per your list
+$allowed = ['tst','pdf','jpg','jpeg','png','mp4','oxps','zip','rar'];
 
 // Prepare directories
 $baseUploadDir = __DIR__ . '/uploads';
@@ -70,7 +109,7 @@ if (!is_dir($baseUploadDir) && !mkdir($baseUploadDir, 0755, true)) {
     exit;
 }
 
-$targetDir = $baseUploadDir . '/' . $year . '/' . $isemri . '/' . $plaka;
+$targetDir = $baseUploadDir . '/' . $year . '/' . $nameIsemri . '/' . $namePlate;
 if (!is_dir($targetDir) && !mkdir($targetDir, 0755, true)) {
     $_SESSION['flash_error'] = 'Sunucu yapılandırma hatası: hedef dizin oluşturulamadı.';
     header('Location: ' . asset('/'));
@@ -89,22 +128,20 @@ if (!is_writable($targetDir) || !is_writable($thumbDir)) {
     exit;
 }
 
-// Helper: find next sequential index for base in a directory (checks existing files)
+// Helper functions
 function next_index_for_base($dir, $base, $typePrefix = '', $exts = []) {
     $max = 0;
     $files = @scandir($dir);
     if (!is_array($files)) return 1;
     foreach ($files as $f) {
         if (!is_file($dir . '/' . $f)) continue;
-        $name = pathinfo($f, PATHINFO_FILENAME); // without ext
-        // For JOB-CARD pattern: base-JOB-CARD or base-JOB-CARD-2
+        $name = pathinfo($f, PATHINFO_FILENAME);
         if ($typePrefix !== '') {
             if (preg_match('/^' . preg_quote($base . '-' . $typePrefix, '/') . '(?:-(\d+))?$/', $name, $m)) {
                 $idx = (isset($m[1]) && is_numeric($m[1])) ? (int)$m[1] : 1;
                 if ($idx > $max) $max = $idx;
             }
         } else {
-            // images/other: base-1, base-2...
             if (preg_match('/^' . preg_quote($base . '-', '/') . '(\d+)$/', $name, $m)) {
                 $idx = (int)$m[1];
                 if ($idx > $max) $max = $idx;
@@ -114,11 +151,9 @@ function next_index_for_base($dir, $base, $typePrefix = '', $exts = []) {
     return $max + 1;
 }
 
-// Image optimization functions using GD (fallback). Returns true on success.
 function optimize_image_inplace($srcPath, $maxWidth = 1600, $quality = 85) {
     $ext = strtolower(pathinfo($srcPath, PATHINFO_EXTENSION));
     if (!in_array($ext, ['jpg','jpeg','png','gif'])) return false;
-
     try {
         switch ($ext) {
             case 'jpg':
@@ -137,13 +172,10 @@ function optimize_image_inplace($srcPath, $maxWidth = 1600, $quality = 85) {
         if (!$img) return false;
         $w = imagesx($img);
         $h = imagesy($img);
-
-        // if larger than maxWidth, scale down; otherwise keep size
         if ($w > $maxWidth) {
             $newW = $maxWidth;
             $newH = (int)round($h * ($newW / $w));
             $tmp = imagecreatetruecolor($newW, $newH);
-            // preserve PNG transparency
             if ($ext === 'png' || $ext === 'gif') {
                 imagecolortransparent($tmp, imagecolorallocatealpha($tmp, 0, 0, 0, 127));
                 imagealphablending($tmp, false);
@@ -153,15 +185,12 @@ function optimize_image_inplace($srcPath, $maxWidth = 1600, $quality = 85) {
             imagedestroy($img);
             $img = $tmp;
         }
-
-        // overwrite optimized
         switch ($ext) {
             case 'jpg':
             case 'jpeg':
                 imagejpeg($img, $srcPath, $quality);
                 break;
             case 'png':
-                // convert quality 0-9 for PNG (invert)
                 $pngQuality = (int)round((100 - $quality) / 10);
                 imagepng($img, $srcPath, $pngQuality);
                 break;
@@ -177,7 +206,6 @@ function optimize_image_inplace($srcPath, $maxWidth = 1600, $quality = 85) {
     }
 }
 
-// Create thumb (fixed width) - returns true on success
 function create_thumb($srcPath, $destPath, $thumbWidth = 320, $quality = 75) {
     $ext = strtolower(pathinfo($srcPath, PATHINFO_EXTENSION));
     if (!in_array($ext, ['jpg','jpeg','png','gif'])) return false;
@@ -202,7 +230,6 @@ function create_thumb($srcPath, $destPath, $thumbWidth = 320, $quality = 75) {
             imagesavealpha($dstImg, true);
         }
         imagecopyresampled($dstImg, $srcImg, 0,0,0,0, $newW, $newH, $w, $h);
-        // Save as JPEG for thumbs for smaller size
         imagejpeg($dstImg, $destPath, $quality);
         imagedestroy($srcImg);
         imagedestroy($dstImg);
@@ -215,7 +242,6 @@ function create_thumb($srcPath, $destPath, $thumbWidth = 320, $quality = 75) {
 
 // Process files
 $files_info = [];
-// counters to keep sequential numbers within same request
 $counters = ['img'=>0,'pdf'=>0,'other'=>0];
 
 foreach ($_FILES['files']['error'] as $i => $err) {
@@ -226,12 +252,11 @@ foreach ($_FILES['files']['error'] as $i => $err) {
     if (!in_array($ext, $allowed)) continue;
     if (!is_uploaded_file($tmp)) continue;
 
-    $base = "{$year}-{$isemri}-{$plaka}";
+    $base = "{$year}-{$nameIsemri}-{$namePlate}";
 
     if (in_array($ext, ['jpg','jpeg','png','gif'])) {
         // images
         $next = next_index_for_base($targetDir, $base, '', $allowed);
-        // If multiple images in same request, next should increase sequentially
         $next += $counters['img'];
         $counters['img']++;
         $filename = "{$base}-{$next}.{$ext}";
@@ -242,18 +267,14 @@ foreach ($_FILES['files']['error'] as $i => $err) {
             continue;
         }
 
-        // Optimize original in-place (resize & re-encode)
         optimize_image_inplace($dest, 1600, 85);
 
-        // Create thumb file name and path: thumbs/thumb-{base}-{n}.jpg
         $thumbName = "thumb-{$base}-{$next}.jpg";
         $thumbPath = $thumbDir . '/' . $thumbName;
-        // create thumb (jpeg)
         create_thumb($dest, $thumbPath, 320, 75);
 
-        // public paths via asset()
-        $relOriginal = 'uploads/' . $year . '/' . $isemri . '/' . $plaka . '/' . $filename;
-        $relThumb = 'uploads/' . $year . '/' . $isemri . '/' . $plaka . '/thumbs/' . $thumbName;
+        $relOriginal = 'uploads/' . $year . '/' . $nameIsemri . '/' . $namePlate . '/' . $filename;
+        $relThumb = 'uploads/' . $year . '/' . $nameIsemri . '/' . $namePlate . '/thumbs/' . $thumbName;
         $publicOriginal = asset('/' . $relOriginal);
         $publicThumb = asset('/' . $relThumb);
 
@@ -265,11 +286,10 @@ foreach ($_FILES['files']['error'] as $i => $err) {
             'thumb' => $publicThumb
         ];
     } elseif ($ext === 'pdf') {
-        // pdf naming: base-JOB-CARD.pdf or base-JOB-CARD-2.pdf
+        // pdf naming
         $next = next_index_for_base($targetDir, $base, 'JOB-CARD', ['pdf']);
         $next += $counters['pdf'];
         $counters['pdf']++;
-        // if first and none exist, name base-JOB-CARD.pdf else base-JOB-CARD-<n>.pdf
         $existing_first = glob($targetDir . '/' . $base . '-JOB-CARD.*');
         if (empty($existing_first) && $next === 1) {
             $filename = "{$base}-JOB-CARD.{$ext}";
@@ -281,8 +301,7 @@ foreach ($_FILES['files']['error'] as $i => $err) {
             error_log("upload: move_uploaded_file failed for {$orig}");
             continue;
         }
-        // PDFs - no thumb generation by default (could generate page preview later)
-        $relOriginal = 'uploads/' . $year . '/' . $isemri . '/' . $plaka . '/' . $filename;
+        $relOriginal = 'uploads/' . $year . '/' . $nameIsemri . '/' . $namePlate . '/' . $filename;
         $publicOriginal = asset('/' . $relOriginal);
         $files_info[] = [
             'original_name' => $orig,
@@ -292,7 +311,7 @@ foreach ($_FILES['files']['error'] as $i => $err) {
             'thumb' => null
         ];
     } else {
-        // other files - treat like images numbering
+        // other allowed files
         $next = next_index_for_base($targetDir, $base, '', $allowed);
         $next += $counters['other'];
         $counters['other']++;
@@ -302,7 +321,7 @@ foreach ($_FILES['files']['error'] as $i => $err) {
             error_log("upload: move_uploaded_file failed for {$orig}");
             continue;
         }
-        $relOriginal = 'uploads/' . $year . '/' . $isemri . '/' . $plaka . '/' . $filename;
+        $relOriginal = 'uploads/' . $year . '/' . $nameIsemri . '/' . $namePlate . '/' . $filename;
         $publicOriginal = asset('/' . $relOriginal);
         $files_info[] = [
             'original_name' => $orig,
@@ -321,21 +340,21 @@ if (empty($files_info)) {
     exit;
 }
 
-// DB insert
+// Insert into DB (branch_code from branch_code_int)
 try {
     $db = db_connect();
     $stmt = $db->prepare("INSERT INTO uploads (plaka, isemri, branch_code, files_json, created_at) VALUES (:plaka, :isemri, :branch, :files, NOW())");
     $stmt->execute([
         ':plaka' => $plaka,
         ':isemri' => $isemri,
-        ':branch' => $branch_code,
+        ':branch' => $branch_code_int,
         ':files' => json_encode($files_info, JSON_UNESCAPED_UNICODE)
     ]);
     if (function_exists('log_action')) {
         log_action('upload', [
             'isemri' => $isemri,
             'plaka' => $plaka,
-            'branch_code' => $branch_code,
+            'branch_code' => $branch_code_int,
             'files' => array_map(function($f){ return $f['stored']; }, $files_info)
         ]);
     }
