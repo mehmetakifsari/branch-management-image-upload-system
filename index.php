@@ -115,7 +115,49 @@ try {
     input[type="submit"], button.primary { width:100%; padding:10px 14px; background-color:#2563EB; color:white; border:none; cursor:pointer; border-radius:10px; margin-top:12px; font-size:15px; font-weight:700; box-shadow:0 8px 22px rgba(37,99,235,0.12); }
     input[type="submit"]:hover, button.primary:hover { filter:brightness(.98); }
 
-    @media (max-width:480px) { .container{padding:18px;} .logo{width:180px;} }
+    /* Camera overlay */
+    .camera-overlay {
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      padding:20px;
+    }
+    .camera-panel {
+      background:#fff;
+      border-radius:10px;
+      padding:12px;
+      max-width:720px;
+      width:100%;
+      box-shadow:0 10px 30px rgba(0,0,0,0.4);
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:center;
+      position:relative;
+    }
+    .camera-video { width:100%; border-radius:8px; background:#000; max-height:70vh; object-fit:contain; touch-action: none; }
+    .camera-controls { display:flex; gap:8px; align-items:center; }
+
+    /* zoom/focus UI */
+    .camera-tools { width:100%; display:flex; gap:8px; align-items:center; justify-content:center; margin-top:6px; }
+    .zoom-slider { width:220px; }
+    .focus-indicator {
+      position:absolute;
+      width:80px;
+      height:80px;
+      border-radius:50%;
+      border:2px solid rgba(37,99,235,0.9);
+      pointer-events:none;
+      transform:translate(-50%,-50%) scale(0.1);
+      opacity:0;
+      transition:opacity .25s ease, transform .25s ease;
+    }
+
+    @media (max-width:480px) { .container{padding:18px;} .logo{width:180px;} .zoom-slider{width:140px;} }
   </style>
 </head>
 <body>
@@ -166,7 +208,8 @@ try {
         <label class="small-label" for="files">Dosyalar</label>
         <div class="file-input-row">
           <input type="file" id="files" name="files[]" multiple accept=".tst,.pdf,.jpg,.jpeg,.png,.mp4,.oxps,.zip,.rar">
-          <!-- Default display text, not hardcoded filename chips -->
+          <!-- Buttons: choose files and take photo -->
+          <button type="button" id="captureBtn" class="primary" style="width:auto;padding:8px 12px;margin-left:6px;">Fotoğraf Çek</button>
           <div class="custom-file-display" id="fileNames">Dosya seçilmedi</div>
         </div>
         <div id="fileError" class="file-error" style="display:none;"></div>
@@ -177,6 +220,24 @@ try {
 
       <input type="submit" value="Görsel Yükle">
     </form>
+  </div>
+
+  <!-- Camera overlay (hidden by default) -->
+  <div id="cameraOverlay" class="camera-overlay" style="display:none;" aria-hidden="true" aria-modal="true" role="dialog">
+    <div class="camera-panel" role="document">
+      <div id="focusIndicator" class="focus-indicator" aria-hidden="true"></div>
+      <video id="cameraVideo" class="camera-video" autoplay playsinline></video>
+      <div class="camera-controls">
+        <button id="takePhotoBtn" class="primary" type="button">Çek</button>
+        <button id="closeCameraBtn" type="button">İptal</button>
+        <label style="margin-left:12px;color:#6B7280;font-size:13px">Kalite: WhatsApp benzeri (resize + JPEG sıkıştırma)</label>
+      </div>
+      <div class="camera-tools" id="cameraTools" style="display:none;">
+        <button id="zoomOutBtn" type="button">-</button>
+        <input id="zoomSlider" class="zoom-slider" type="range" min="1" max="1" step="0.1" value="1" />
+        <button id="zoomInBtn" type="button">+</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -199,11 +260,29 @@ try {
   const fileNamesEl = document.getElementById('fileNames');
   const fileErrorEl = document.getElementById('fileError');
 
+  const captureBtn = document.getElementById('captureBtn');
+  const cameraOverlay = document.getElementById('cameraOverlay');
+  const cameraVideo = document.getElementById('cameraVideo');
+  const takePhotoBtn = document.getElementById('takePhotoBtn');
+  const closeCameraBtn = document.getElementById('closeCameraBtn');
+  const cameraTools = document.getElementById('cameraTools');
+  const zoomSlider = document.getElementById('zoomSlider');
+  const zoomInBtn = document.getElementById('zoomInBtn');
+  const zoomOutBtn = document.getElementById('zoomOutBtn');
+  const focusIndicator = document.getElementById('focusIndicator');
+
   // Allowed extensions
   const allowedExts = ['tst','pdf','jpg','jpeg','png','mp4','oxps','zip','rar'];
 
   // Selected files array for manipulation
   let selectedFiles = [];
+
+  // Camera stream handle
+  let cameraStream = null;
+  let videoTrack = null;
+  let trackCapabilities = null;
+  let currentZoom = 1;
+  let lastPinch = null;
 
   // Helpers
   function getExt(filename) {
@@ -409,6 +488,321 @@ try {
     }
     // allow submit
   });
+
+  //
+  // Camera capture logic (WhatsApp-like quality) + zoom & focus (best-effort)
+  //
+  function openCamera() {
+    // Basic validation: require isemri/plaka (or vin when PDI) so captured photos are associated
+    if (!pdiEl.checked) {
+      if (!isemriEl.value) { alert('Lütfen önce İş Emri numarasını girin.'); return; }
+      if (!plakaEl.value)  { alert('Lütfen önce Plaka bilgisini girin.'); return; }
+    } else {
+      if (!vinEl.value) { alert('PDI için lütfen Şasi (VIN) girin.'); return; }
+      if (!branchSelect.value) { alert('PDI için lütfen şube seçin.'); return; }
+    }
+
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    };
+    navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+      cameraStream = stream;
+      cameraVideo.srcObject = stream;
+      cameraOverlay.style.display = 'flex';
+      cameraOverlay.setAttribute('aria-hidden', 'false');
+      cameraVideo.play();
+
+      // prepare track / capabilities for zoom/focus
+      videoTrack = stream.getVideoTracks()[0];
+      try {
+        trackCapabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : null;
+      } catch (e) {
+        trackCapabilities = null;
+      }
+
+      setupCameraControls();
+    }).catch(err => {
+      alert('Kamera açılamadı: ' + (err.message || err));
+      console.error(err);
+    });
+  }
+
+  function closeCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+    videoTrack = null;
+    trackCapabilities = null;
+    cameraVideo.pause();
+    cameraVideo.srcObject = null;
+    cameraOverlay.style.display = 'none';
+    cameraOverlay.setAttribute('aria-hidden', 'true');
+    // hide tools
+    cameraTools.style.display = 'none';
+    focusIndicator.style.opacity = 0;
+  }
+
+  // Setup zoom/focus UI based on capabilities
+  function setupCameraControls() {
+    cameraTools.style.display = 'none';
+    // Reset slider
+    zoomSlider.min = 1;
+    zoomSlider.max = 1;
+    zoomSlider.step = 0.1;
+    zoomSlider.value = 1;
+    currentZoom = 1;
+    lastPinch = null;
+
+    if (!trackCapabilities) return;
+
+    // Zoom
+    if ('zoom' in trackCapabilities) {
+      const zmin = trackCapabilities.zoom.min || 1;
+      const zmax = trackCapabilities.zoom.max || 1;
+      const zstep = trackCapabilities.zoom.step || 0.1;
+      zoomSlider.min = zmin;
+      zoomSlider.max = zmax;
+      zoomSlider.step = zstep;
+      // apply initial if track has setting
+      try {
+        const settings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+        currentZoom = settings.zoom || 1;
+        zoomSlider.value = currentZoom;
+      } catch (e) {
+        currentZoom = 1;
+      }
+      cameraTools.style.display = 'flex';
+    } else {
+      // no zoom support
+      console.debug('Zoom not supported by this device.');
+    }
+
+    // Focus: best-effort - show instruction via tap; actual applyConstraints depends on support
+    // We rely on potential 'focusMode' or 'pointsOfInterest' capability; many devices don't support programmatic focus.
+    if ('focusMode' in trackCapabilities || 'pointsOfInterest' in trackCapabilities) {
+      // show tap-to-focus feedback (focusIndicator) - no extra UI needed
+      cameraVideo.style.cursor = 'crosshair';
+    } else {
+      cameraVideo.style.cursor = 'default';
+      console.debug('Programmatic focus not supported (focusMode/pointsOfInterest absent).');
+    }
+  }
+
+  // Apply zoom value to track
+  async function applyZoom(value) {
+    if (!videoTrack) return;
+    if (!trackCapabilities || !('zoom' in trackCapabilities)) return;
+    const z = Number(value);
+    try {
+      await videoTrack.applyConstraints({ advanced: [{ zoom: z }] });
+      currentZoom = z;
+      zoomSlider.value = z;
+    } catch (e) {
+      console.warn('applyConstraints(zoom) failed', e);
+    }
+  }
+
+  zoomSlider.addEventListener('input', function() {
+    applyZoom(this.value);
+  });
+  zoomInBtn.addEventListener('click', function() {
+    const v = Math.min(Number(zoomSlider.max), Number(zoomSlider.value) + Number(zoomSlider.step));
+    applyZoom(v);
+  });
+  zoomOutBtn.addEventListener('click', function() {
+    const v = Math.max(Number(zoomSlider.min), Number(zoomSlider.value) - Number(zoomSlider.step));
+    applyZoom(v);
+  });
+
+  // Pinch-to-zoom support (touch)
+  cameraVideo.addEventListener('touchstart', function(ev) {
+    if (ev.touches.length === 2) {
+      lastPinch = distanceBetween(ev.touches[0], ev.touches[1]);
+    }
+  }, { passive: true });
+  cameraVideo.addEventListener('touchmove', function(ev) {
+    if (ev.touches.length === 2 && lastPinch) {
+      const d = distanceBetween(ev.touches[0], ev.touches[1]);
+      const delta = d - lastPinch;
+      // adjust zoom by delta proportionally
+      const range = Number(zoomSlider.max) - Number(zoomSlider.min);
+      if (range > 0) {
+        const change = (delta / 200) * range; // sensitivity
+        let nv = Number(zoomSlider.value) + change;
+        nv = Math.max(Number(zoomSlider.min), Math.min(Number(zoomSlider.max), nv));
+        applyZoom(nv);
+      }
+      lastPinch = d;
+    }
+  }, { passive: true });
+  cameraVideo.addEventListener('touchend', function(ev) {
+    if (ev.touches.length < 2) lastPinch = null;
+  });
+
+  function distanceBetween(a, b) {
+    const dx = a.clientX - b.clientX;
+    const dy = a.clientY - b.clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+
+  // Tap-to-focus (best-effort)
+  cameraVideo.addEventListener('click', function(ev) {
+    // coordinates relative to video element (0..1)
+    const rect = cameraVideo.getBoundingClientRect();
+    const x = (ev.clientX - rect.left) / rect.width;
+    const y = (ev.clientY - rect.top) / rect.height;
+
+    // show visual feedback
+    showFocusIndicator(ev.clientX - rect.left, ev.clientY - rect.top);
+
+    if (!videoTrack || !trackCapabilities) return;
+
+    // If device supports pointsOfInterest, try applyConstraints
+    const supportsPOI = 'pointsOfInterest' in trackCapabilities;
+    const supportsFocusMode = 'focusMode' in trackCapabilities;
+    const supportsFocusDistance = 'focusDistance' in trackCapabilities;
+
+    if (supportsPOI) {
+      try {
+        videoTrack.applyConstraints({ advanced: [{ pointsOfInterest: [{ x: x, y: y }] }] });
+        console.debug('Applied pointsOfInterest', x, y);
+        return;
+      } catch (e) {
+        console.warn('applyConstraints pointsOfInterest failed', e);
+      }
+    }
+
+    // Try focusMode single-shot if available
+    if (supportsFocusMode) {
+      try {
+        const modes = trackCapabilities.focusMode || [];
+        if (modes.includes('single-shot')) {
+          videoTrack.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+          console.debug('Requested single-shot focus');
+          return;
+        } else if (modes.includes('continuous')) {
+          // toggling continuous may trigger refocus
+          videoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+      } catch (e) {
+        console.warn('applyConstraints focusMode failed', e);
+      }
+    }
+
+    // Manual focusDistance if supported: attempt to set to mid-range (best-effort)
+    if (supportsFocusDistance) {
+      try {
+        const fd = trackCapabilities.focusDistance;
+        const min = fd.min || 0;
+        const max = fd.max || 0;
+        const mid = (min + max) / 2;
+        videoTrack.applyConstraints({ advanced: [{ focusDistance: mid }] });
+        console.debug('Applied focusDistance', mid);
+        return;
+      } catch (e) {
+        console.warn('applyConstraints focusDistance failed', e);
+      }
+    }
+
+    // If none supported, nothing to do - device likely handles auto-focus natively
+    console.debug('Tap-to-focus not supported on this device.');
+  });
+
+  function showFocusIndicator(x, y) {
+    focusIndicator.style.left = x + 'px';
+    focusIndicator.style.top = y + 'px';
+    focusIndicator.style.opacity = '1';
+    focusIndicator.style.transform = 'translate(-50%,-50%) scale(1)';
+    clearTimeout(focusIndicator._timeout);
+    focusIndicator._timeout = setTimeout(() => {
+      focusIndicator.style.opacity = '0';
+      focusIndicator.style.transform = 'translate(-50%,-50%) scale(0.1)';
+    }, 800);
+  }
+
+  // Resize and compress to approximate WhatsApp quality:
+  // - Resize longest side to max 1280px
+  // - JPEG quality ~0.65
+  function imageBlobFromVideo(videoEl, quality = 0.65, maxSide = 1280) {
+    const canvas = document.createElement('canvas');
+    const vw = videoEl.videoWidth;
+    const vh = videoEl.videoHeight;
+    if (!vw || !vh) return Promise.reject(new Error('Video çözünürlüğü alınamadı.'));
+    let nw = vw, nh = vh;
+    if (Math.max(vw, vh) > maxSide) {
+      if (vw > vh) {
+        nw = maxSide;
+        nh = Math.round((vh / vw) * maxSide);
+      } else {
+        nh = maxSide;
+        nw = Math.round((vw / vh) * maxSide);
+      }
+    }
+    canvas.width = nw;
+    canvas.height = nh;
+    const ctx = canvas.getContext('2d');
+    // if you want mirrored preview handling you could flip here
+    ctx.drawImage(videoEl, 0, 0, nw, nh);
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/jpeg', quality);
+    });
+  }
+
+  takePhotoBtn.addEventListener('click', async function() {
+    takePhotoBtn.disabled = true;
+    takePhotoBtn.textContent = 'Kaydediliyor...';
+    try {
+      const blob = await imageBlobFromVideo(cameraVideo, 0.65, 1280);
+      if (!blob) throw new Error('Fotoğraf alınamadı.');
+
+      // Create filename: TIMESTAMP-ISEMRI-PLAKA.jpg (fallback values)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const isemriVal = pdiEl.checked ? (vinEl.value || 'PDI') : (isemriEl.value || 'NOISE');
+      const plakaVal = pdiEl.checked ? (vinEl.value || 'NOPL') : (plakaEl.value || 'NOPL');
+      const safeIs = String(isemriVal).replace(/[^A-Za-z0-9\-]/g,'');
+      const safePl = String(plakaVal).replace(/[^A-Za-z0-9\-]/g,'');
+      const filename = `${timestamp}-${safeIs}-${safePl}.jpg`;
+
+      const file = new File([blob], filename, { type: 'image/jpeg' });
+
+      // Add to selectedFiles and update UI
+      selectedFiles.push(file);
+      updateInputFiles();
+      renderFilesUI();
+
+      // close camera after capture
+      closeCamera();
+    } catch (err) {
+      console.error(err);
+      alert('Fotoğraf alınırken hata: ' + (err.message || err));
+    } finally {
+      takePhotoBtn.disabled = false;
+      takePhotoBtn.textContent = 'Çek';
+    }
+  });
+
+  closeCameraBtn.addEventListener('click', function() {
+    closeCamera();
+  });
+
+  captureBtn.addEventListener('click', function() {
+    openCamera();
+  });
+
+  // Immediately render initial UI
+  renderFilesUI();
+
+  // Expose updateInputFiles/renderFilesUI for other code paths if needed
+  window.__upload_helpers = { selectedFiles, updateInputFiles, renderFilesUI };
+
 </script>
 </body>
 </html>
