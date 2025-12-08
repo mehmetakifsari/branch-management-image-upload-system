@@ -6,7 +6,7 @@
 // - detects CURRENT_USER from session in a tolerant way
 // - exposes window.CHAT_BASE and window.CURRENT_USER using json_encode (safe escaping)
 // - preloads audio if present and prints asset tags
-// NOTE: bug fixed: removed invalid "break 2" which caused the PHP fatal.
+// - avoid header() warnings by checking headers_sent() and providing a fallback meta tag
 
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
@@ -97,8 +97,15 @@ if (!empty($uid) && !empty($uname)) {
     $currentUserJs = ['user_id' => (int)$uid, 'username' => (string)$uname];
 }
 
-// Output JS safely using json_encode to avoid quoting issues
-header('X-Frame-Options: SAMEORIGIN'); // small safety header (optional)
+// Attempt to set a small security header, but avoid "headers already sent" warnings
+if (!headers_sent()) {
+    header('X-Frame-Options: SAMEORIGIN'); // small safety header (optional)
+} else {
+    // fallback: print a meta tag and a console warning so problems are visible in browser devtools
+    echo '<!-- chat-init: headers already sent, skipped header() call -->' . "\n";
+    echo '<meta http-equiv="X-Frame-Options" content="SAMEORIGIN">' . "\n";
+    echo '<script>console.warn("chat-init: headers already sent; header(X-Frame-Options) skipped.");</script>' . "\n";
+}
 
 echo '<!-- chat-init: start -->' . "\n";
 echo '<script>console.log("chat-init: session keys: ' . addslashes($session_keys) . '");</script>' . "\n";

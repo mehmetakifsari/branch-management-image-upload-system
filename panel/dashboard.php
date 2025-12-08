@@ -1,5 +1,15 @@
 <?php
 // public_html/pnl2/panel/dashboard.php
+// NOTE: Added output buffering at the very top to prevent "headers already sent" warnings
+// when included modules (like includes/chat-init.php) call header(). This is a minimal,
+// safe fix you can upload via FTP. If you prefer a different approach (move include
+// earlier or modify chat-init.php), tell me and I can produce that variant.
+
+if (session_status() === PHP_SESSION_NONE) {
+    // start buffering before any output
+    @ob_start();
+}
+
 require_once __DIR__ . '/../inc/auth.php';
 require_login();
 require_once __DIR__ . '/../inc/helpers.php';

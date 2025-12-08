@@ -1,11 +1,10 @@
 <?php
 // /public_html/pnl2/inc/head.php
-// Ortak <head> include: CSS ve favicon'ı ayarlıyor.
-// Not: helpers.php'de asset() ve asset_file_path() olmalı.
+// Ortak <head> include: CSS, favicon ve chat widget asset'lerini ekler.
 
 require_once __DIR__ . '/helpers.php';
 
-// css
+// css (main)
 $cssRel = '/assets/css/style.css';
 $cssUrl = asset($cssRel);
 $cssFilePath = asset_file_path($cssRel);
@@ -45,8 +44,24 @@ foreach ($dbCandidates as $dbFile) {
         break;
     }
 }
+
+// Chat widget assets
+$chatCssRel = '/assets/css/chat-widgets.css';
+$chatJsRel  = '/assets/js/chat-widgets.js';
+
+$chatCssUrl = asset($chatCssRel);
+$chatCssFilePath = asset_file_path($chatCssRel);
+$chatCssVer = $chatCssFilePath ? filemtime($chatCssFilePath) : time();
+
+$chatJsUrl = asset($chatJsRel);
+$chatJsFilePath = asset_file_path($chatJsRel);
+$chatJsVer = $chatJsFilePath ? filemtime($chatJsFilePath) : time();
 ?>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="<?php echo htmlspecialchars($faviconUrl, ENT_QUOTES, 'UTF-8'); ?>" type="image/png">
 <link rel="stylesheet" href="<?php echo htmlspecialchars($cssUrl . '?v=' . $ver, ENT_QUOTES, 'UTF-8'); ?>">
+
+<!-- Chat widget styles & script -->
+<link rel="stylesheet" href="<?php echo htmlspecialchars($chatCssUrl . '?v=' . $chatCssVer, ENT_QUOTES, 'UTF-8'); ?>">
+<script defer src="<?php echo htmlspecialchars($chatJsUrl . '?v=' . $chatJsVer, ENT_QUOTES, 'UTF-8'); ?>"></script>

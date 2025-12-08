@@ -105,6 +105,7 @@ $faviconUrl = asset($faviconPath);
 <!doctype html>
 <html lang="tr">
 <head>
+  <?php include __DIR__ . '/includes/chat-init.php'; ?>
   <?php require_once __DIR__ . '/../inc/head.php'; ?>
   <link rel="stylesheet" href="<?php echo asset('/assets/css/panel-users.css'); ?>">
   <title>Ayarlar</title>

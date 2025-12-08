@@ -18,3 +18,17 @@
 2025-12-07 22:56:59 | ACTION: upload | USER: anonymous | IP: 37.130.75.214 | DEVICE: Mobile | DETAILS: {"isemri":"41209009","plaka":"34BVC123","branch_code":4,"files":["2025-41209009-34BVC123-1.jpg","2025-41209009-34BVC123-3.jpg"]}
 2025-12-07 23:04:11 | ACTION: upload | USER: anonymous | IP: 37.130.75.214 | DEVICE: Mobile | DETAILS: {"isemri":"41209013","plaka":"34RTE53","branch_code":4,"files":["2025-41209013-34RTE53-1.jpg","2025-41209013-34RTE53-3.jpg","2025-41209013-34RTE53-6.jpg","2025-41209013-34RTE53-10.jpg","2025-41209013-34RTE53-15.jpg","2025-41209013-34RTE53-21.jpg"]}
 2025-12-07 23:05:37 | ACTION: upload | USER: anonymous | IP: 37.130.75.214 | DEVICE: Mobile | DETAILS: {"isemri":"41209013","plaka":"34RTE","branch_code":4,"files":["2025-41209013-34RTE-1.jpg","2025-41209013-34RTE-3.jpg","2025-41209013-34RTE-6.jpg"]}
+2025-12-08 02:25:55 | ACTION: ticket_create | USER_ID: 1 | USERNAME: MrTurko53 | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"title":"deneme"}
+2025-12-08 02:54:26 | ACTION: ticket_create | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"title":"deneme"}
+2025-12-08 03:03:09 | ACTION: ticket_create | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"title":"deneme 12312412","ticket_id":"3"}
+2025-12-08 03:07:06 | ACTION: ticket_create | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"title":"deneme 12312412","ticket_id":"4"}
+2025-12-08 03:08:24 | ACTION: ticket_reply | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":3,"reply_id":"1"}
+2025-12-08 03:08:53 | ACTION: ticket_reply | USER_ID: 1 | USERNAME: MrTurko53 | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":1,"reply_id":"2"}
+2025-12-08 03:09:10 | ACTION: ticket_reply | USER_ID: 1 | USERNAME: MrTurko53 | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":1,"reply_id":"3"}
+2025-12-08 03:09:16 | ACTION: ticket_reply | USER_ID: 1 | USERNAME: MrTurko53 | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":1,"reply_id":"4"}
+2025-12-08 03:11:52 | ACTION: ticket_create | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"title":"deneme 12312412","ticket_id":"5"}
+2025-12-08 03:11:56 | ACTION: ticket_reply | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":3,"reply_id":"5"}
+2025-12-08 03:12:09 | ACTION: ticket_reply | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":3,"reply_id":"6"}
+2025-12-08 03:12:20 | ACTION: ticket_reply | USER_ID: 3 | USERNAME: admin | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":3,"reply_id":"7"}
+2025-12-08 03:17:38 | ACTION: ticket_reply | USER_ID: 1 | USERNAME: MrTurko53 | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"ticket_id":1,"reply_id":"8"}
+2025-12-08 03:17:56 | ACTION: ticket_create | USER_ID: 1 | USERNAME: MrTurko53 | IP: 37.130.75.214 | DEVICE: Desktop | DETAILS: {"title":"tet setestsetses","ticket_id":"6"}

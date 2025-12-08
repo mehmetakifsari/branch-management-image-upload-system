@@ -7,6 +7,7 @@ $user = current_user();
   <nav style="display:flex;justify-content:center;gap:12px;align-items:center;flex-wrap:wrap">
     <a href="dashboard.php">Dashboard</a>
     <a href="branches.php">Şubeler</a>
+    <a href="tickets.php">Destek Talepleri</a>
     <?php if (is_admin()): ?>
       <a href="users.php">Kullanıcılar</a>
       <a href="settings.php">Ayarlar</a>

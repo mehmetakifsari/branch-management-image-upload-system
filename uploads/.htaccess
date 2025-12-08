@@ -1,0 +1,10 @@
+# uploads/.htaccess
+# Güvenlik: dizin listelemeyi kapat, PHP yürütmeyi engelle (Apache)
+Options -Indexes
+
+# Eğer hosting php_flag destekliyorsa aşağıdaki satır php yürütmeyi kapatır
+# php_flag engine off
+
+<FilesMatch "\.(php|phtml|phar)$">
+  Require all denied
+</FilesMatch>

@@ -1,361 +1,294 @@
-// assets/js/chat-widget.js
+// assets/js/chat-widgets.js
+// Geliştirilmiş chat widget: mevcut message poll/send mantığını korur ve header'da tek user-count butonu + hover/click popup ile online kullanıcı listesini gösterir.
+// Defer ile yüklenmeye uygun, global isimleri kirletmez.
+
 (function () {
-  'use strict';
+  const ENDPOINT_GET = '/panel/api/chat/get_messages.php';
+  const ENDPOINT_SEND = '/panel/api/chat/send_message.php';
+  const ENDPOINT_PRESENCE = '/panel/api/chat/presence.php';
 
-  // BASE detect (chat-init.php pre-sets window.CHAT_BASE)
-  var BASE = (window.CHAT_BASE || '');
-
-  if (!BASE) {
-    try {
-      var scriptEl = document.querySelector('script[src*="chat-widget.js"], script[src*="chat-widget-debug.js"]');
-      if (scriptEl) {
-        var src = scriptEl.getAttribute('src');
-        var m = src.match(/^(?:https?:\/\/[^\/]+)?(.*)\/assets\/js\/chat-widget/);
-        if (m && m[1]) BASE = m[1];
-      }
-    } catch (e) {
-      console.warn('CHAT WIDGET: base autodetect failed', e);
-    }
-  }
-  if (BASE && BASE.charAt(0) !== '/') BASE = '/' + BASE;
-  if (BASE && BASE !== '/' && BASE.endsWith('/')) BASE = BASE.slice(0, -1);
-  window.CHAT_BASE = BASE || '';
-
-  var ENDPOINT_GET = (window.CHAT_BASE || '') + '/panel/api/chat/get_messages.php';
-  var ENDPOINT_SEND = (window.CHAT_BASE || '') + '/panel/api/chat/send_message.php';
-  var ENDPOINT_PRESENCE = (window.CHAT_BASE || '') + '/panel/api/chat/presence.php';
-
-  console.log('CHAT WIDGET: BASE=', window.CHAT_BASE, 'GET=', ENDPOINT_GET);
-
-  // If no current user, do not initialize interactive widget (security)
   if (!window.CURRENT_USER || !window.CURRENT_USER.user_id) {
-    console.log('CHAT WIDGET: CURRENT_USER missing, widget will not initialize.');
     return;
   }
 
-  var CURRENT_ID = window.CURRENT_USER.user_id;
-  var CURRENT_NAME = window.CURRENT_USER.username;
+  const CURRENT_ID = window.CURRENT_USER.user_id;
+  const CURRENT_NAME = window.CURRENT_USER.username;
 
-  // State
-  var lastMessageId = 0;
-  var pollInterval = 2500;
-  var presenceInterval = 15000;
-  var isOpen = false;
+  let lastMessageId = 0;
+  const pollInterval = 2000;
+  const presenceInterval = 15000;
+  let isOpen = false;
 
-  // Notification sound state
-  var SOUND_KEY = 'chat_sound_enabled';
-  var soundEnabled = (localStorage.getItem(SOUND_KEY) !== '0'); // default on
-  var lastSoundAt = 0;
-  var SOUND_MIN_INTERVAL = 800; // ms
-
-  // Try to create an HTMLAudioElement for a bundled sound file, with HEAD/GET detection + blob fallback
-  var audioEl = null;
-  var soundUrl = (window.CHAT_BASE || '') + '/assets/sounds/notify.mp3';
-  (function tryLoadAudio() {
-    var url = soundUrl;
-    // Try HEAD first to confirm existence
-    fetch(url, { method: 'HEAD', credentials: 'same-origin' }).then(function (r) {
-      if (r && r.ok) {
-        // create audio element and attempt to preload
-        audioEl = new Audio(url);
-        audioEl.preload = 'auto';
-        audioEl.addEventListener('error', function () { audioEl = null; });
-        try { audioEl.load(); } catch (e) { /* ignore */ }
-      } else {
-        // HEAD failed or not ok -> try GET and create blob URL
-        fetch(url, { method: 'GET', credentials: 'same-origin' })
-          .then(function(resp){
-            if (!resp.ok) throw new Error('audio GET failed');
-            return resp.blob();
-          })
-          .then(function(blob){
-            try {
-              audioEl = new Audio(URL.createObjectURL(blob));
-              audioEl.preload = 'auto';
-              audioEl.addEventListener('error', function(){ audioEl = null; });
-            } catch (e) {
-              audioEl = null;
-            }
-          })
-          .catch(function(){
-            // network failed -> leave audioEl null (WebAudio fallback will be used)
-            audioEl = null;
-          });
-      }
-    }).catch(function () {
-      // HEAD request itself failed (CORS or network) -> try GET+blob
-      fetch(url, { method: 'GET', credentials: 'same-origin' })
-        .then(function(resp){
-          if (!resp.ok) throw new Error('audio GET failed');
-          return resp.blob();
-        })
-        .then(function(blob){
-          try {
-            audioEl = new Audio(URL.createObjectURL(blob));
-            audioEl.preload = 'auto';
-            audioEl.addEventListener('error', function(){ audioEl = null; });
-          } catch (e) {
-            audioEl = null;
-          }
-        })
-        .catch(function(){
-          audioEl = null;
-        });
-    });
-  })();
-
-  // WebAudio fallback beep generator
-  var audioCtx = null;
-  function ensureAudioContext() {
-    if (!audioCtx) {
-      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
-    }
-    return audioCtx;
-  }
-  function playBeep(freq, duration) {
-    var ctx = ensureAudioContext();
-    if (!ctx) return;
-    try {
-      var o = ctx.createOscillator();
-      var g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = freq || 880;
-      g.gain.value = 0.001;
-      o.connect(g);
-      g.connect(ctx.destination);
-      var now = ctx.currentTime;
-      g.gain.linearRampToValueAtTime(0.12, now + 0.005);
-      o.start(now);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + (duration || 0.12));
-      o.stop(now + (duration || 0.12) + 0.02);
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  function playNotificationSound() {
-    if (!soundEnabled) return;
-    var now = Date.now();
-    if (now - lastSoundAt < SOUND_MIN_INTERVAL) return;
-    lastSoundAt = now;
-
-    // First, try HTMLAudio
-    if (audioEl) {
-      // Some browsers disallow autoplay until user gesture — attempt to play and fallback
-      var playPromise;
-      try { playPromise = audioEl.play(); } catch (e) { playPromise = null; }
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise.catch(function (err) {
-          // fallback to WebAudio
-          playBeep(880, 0.12);
-        });
-      } else if (!playPromise) {
-        // fallback to WebAudio
-        playBeep(880, 0.12);
-      }
-      return;
-    }
-    // fallback to WebAudio beep
-    playBeep(880, 0.12);
-  }
-
-  // Build DOM
-  var launcherWrap = document.createElement('div');
+  // Create launcher button
+  const launcherWrap = document.createElement('div');
   launcherWrap.className = 'chat-widget-launcher';
 
-  var launcherBtn = document.createElement('button');
+  const launcherBtn = document.createElement('button');
   launcherBtn.className = 'chat-launcher-button';
   launcherBtn.title = 'Mesajlar';
   launcherBtn.innerText = '💬';
   launcherWrap.appendChild(launcherBtn);
   document.body.appendChild(launcherWrap);
 
-  var chatWindow = document.createElement('div');
+  // Create chat window
+  const chatWindow = document.createElement('div');
   chatWindow.className = 'chat-window';
   chatWindow.style.display = 'none';
-  chatWindow.innerHTML = '\
-    <div class="chat-header">\
-      <div>\
-        <div class="chat-title">Sohbet</div>\
-        <div class="chat-users"><span id="chat-user-count">--</span> kullanıcı</div>\
-      </div>\
-      <div class="chat-controls">\
-        <button id="chat-sound-toggle" title="Ses Aç/Kapa" aria-pressed="false">🔔</button>\
-        <button id="chat-close-btn" title="Kapat">×</button>\
-      </div>\
-    </div>\
-    <div class="chat-body" id="chat-body" aria-live="polite"></div>\
-    <div class="chat-input">\
-      <textarea id="chat-input" placeholder="Mesaj yazın..." maxlength="5000"></textarea>\
-      <button id="chat-send-btn">Gönder</button>\
-    </div>';
+
+  // New header with single user-count button and online popup
+  chatWindow.innerHTML = `
+    <div class="chat-header">
+      <div>
+        <div class="chat-title">Sohbet</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="chat-user-count-btn" class="user-count" aria-haspopup="true" aria-expanded="false" title="Çevrimiçi kullanıcıları göster">
+          <span class="count-dot" aria-hidden="true"></span>
+          <span id="chat-user-count">--</span>
+        </button>
+        <button id="chat-close-btn" title="Kapat">×</button>
+      </div>
+
+      <div id="chat-online-popup" class="online-list" role="dialog" aria-label="Çevrimiçi kullanıcılar" aria-hidden="true">
+        <div id="chat-online-list-inner" class="online-list-inner">
+          <div class="empty">Çevrimiçi kullanıcı yok</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-body" id="chat-body" aria-live="polite"></div>
+    <div class="chat-input">
+      <textarea id="chat-input" placeholder="Mesaj yazın..." maxlength="5000"></textarea>
+      <button id="chat-send-btn">Gönder</button>
+    </div>
+  `;
   document.body.appendChild(chatWindow);
 
-  // small CSS tweak for sound button (in case your CSS doesn't include it)
-  (function injectSmallStyles() {
-    var s = document.createElement('style');
-    s.innerHTML = '\
-      .chat-controls{display:flex;gap:6px;align-items:center}\
-      #chat-sound-toggle{background:transparent;border:none;cursor:pointer;font-size:16px;padding:6px;border-radius:4px}\
-      #chat-sound-toggle[aria-pressed="true"]{background:#e6f7ff}';
-    document.head.appendChild(s);
-  })();
+  // Elements
+  const chatBody = chatWindow.querySelector('#chat-body');
+  const inputEl = chatWindow.querySelector('#chat-input');
+  const sendBtn = chatWindow.querySelector('#chat-send-btn');
+  const closeBtn = chatWindow.querySelector('#chat-close-btn');
+  const userCountBtn = chatWindow.querySelector('#chat-user-count-btn');
+  const userCountEl = chatWindow.querySelector('#chat-user-count');
+  const onlinePopup = chatWindow.querySelector('#chat-online-popup');
+  const onlineListInner = chatWindow.querySelector('#chat-online-list-inner');
 
-  var chatBody = chatWindow.querySelector('#chat-body');
-  var inputEl = chatWindow.querySelector('#chat-input');
-  var sendBtn = chatWindow.querySelector('#chat-send-btn');
-  var closeBtn = chatWindow.querySelector('#chat-close-btn');
-  var soundToggleBtn = chatWindow.querySelector('#chat-sound-toggle');
-  var userCountEl = chatWindow.querySelector('#chat-user-count');
-
-  // initialize sound button state
-  function updateSoundButtonUI() {
-    soundToggleBtn.setAttribute('aria-pressed', soundEnabled ? 'true' : 'false');
-    soundToggleBtn.title = soundEnabled ? 'Ses açık (tıklayarak kapat)' : 'Ses kapalı (tıklayarak aç)';
-    soundToggleBtn.textContent = soundEnabled ? '🔔' : '🔕';
-  }
-  updateSoundButtonUI();
-
-  // Ensure user interaction to allow audio on some browsers
-  function userGestureInit() {
-    document.removeEventListener('click', userGestureInit);
-    document.removeEventListener('keydown', userGestureInit);
-    var ctx = ensureAudioContext();
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(function(){});
-    }
-    // Try to play short silent audioEl to unlock playback on mobile/desktop
-    if (audioEl) {
-      try { audioEl.play().then(function(){ audioEl.pause(); audioEl.currentTime = 0; }).catch(function(){ /*ignore*/ }); }
-      catch (e) {}
-    }
-  }
-  document.addEventListener('click', userGestureInit, { once: true });
-  document.addEventListener('keydown', userGestureInit, { once: true });
-
-  soundToggleBtn.addEventListener('click', function () {
-    soundEnabled = !soundEnabled;
-    localStorage.setItem(SOUND_KEY, soundEnabled ? '1' : '0');
-    updateSoundButtonUI();
-    // play a short sound to confirm when enabling (if allowed)
-    if (soundEnabled) playNotificationSound();
-  });
-
-  launcherBtn.addEventListener('click', function () {
+  // Launcher interactions
+  launcherBtn.addEventListener('click', () => {
     isOpen = !isOpen;
     chatWindow.style.display = isOpen ? 'flex' : 'none';
     if (isOpen) scrollToBottom();
   });
-  closeBtn.addEventListener('click', function () { isOpen = false; chatWindow.style.display = 'none'; });
-
-  sendBtn.addEventListener('click', sendMessage);
-  inputEl.addEventListener('keypress', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  closeBtn.addEventListener('click', () => {
+    isOpen = false;
+    chatWindow.style.display = 'none';
   });
 
+  // Send interactions
+  sendBtn.addEventListener('click', sendMessage);
+  inputEl.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Helpers
   function safeText(t) {
-    var d = document.createElement('div'); d.textContent = t; return d.innerHTML;
+    const div = document.createElement('div');
+    div.textContent = t;
+    return div.innerHTML;
   }
 
   function renderMessage(msg) {
-    var wrapper = document.createElement('div');
-    wrapper.className = 'chat-message' + (msg.user_id == CURRENT_ID ? ' me' : '');
-    var meta = document.createElement('div'); meta.className = 'meta';
-    meta.innerHTML = '<strong>' + safeText(msg.username) + '</strong> <div class="meta-time">' + (new Date(msg.created_at)).toLocaleTimeString() + '</div>';
-    var bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.innerHTML = safeText(msg.message);
-    wrapper.appendChild(meta); wrapper.appendChild(bubble);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chat-message' + (String(msg.user_id) === String(CURRENT_ID) ? ' me' : '');
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : new Date().toLocaleTimeString();
+    meta.innerHTML = `<strong>${safeText(msg.username || 'Anonim')}</strong> <span class="meta-time">${time}</span>`;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = safeText(msg.message || '');
+
+    wrapper.appendChild(meta);
+    wrapper.appendChild(bubble);
     return wrapper;
   }
 
   function appendMessages(messages) {
     if (!Array.isArray(messages) || messages.length === 0) return;
-    messages.forEach(function (m) {
-      var el = renderMessage(m);
+    messages.forEach(m => {
+      const el = renderMessage(m);
       chatBody.appendChild(el);
-      // Play sound only if message is from someone else
-      if (m.user_id != CURRENT_ID) {
-        playNotificationSound();
-      }
-      lastMessageId = Math.max(lastMessageId, parseInt(m.id));
+      if (m.id) lastMessageId = Math.max(lastMessageId, parseInt(m.id, 10) || 0);
     });
     if (isOpen) scrollToBottom();
   }
 
-  function scrollToBottom() { chatBody.scrollTop = chatBody.scrollHeight; }
-
-  async function fetchMessages() {
-    try {
-      var res = await fetch(ENDPOINT_GET + '?since_id=' + lastMessageId, { credentials: 'same-origin' });
-      if (!res.ok) return;
-      var data = await res.json();
-      if (data.success && Array.isArray(data.messages)) {
-        // Only append new messages that have id > lastMessageId
-        var newMsgs = data.messages.filter(function(m){ return parseInt(m.id) > lastMessageId; });
-        appendMessages(newMsgs);
-      }
-    } catch (e) { /* silent */ }
+  function scrollToBottom() {
+    chatBody.scrollTop = chatBody.scrollHeight;
   }
 
+  // Message polling
+  async function fetchMessages() {
+    try {
+      const res = await fetch(`${ENDPOINT_GET}?since_id=${lastMessageId}`, { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const messages = (data && (data.messages || data));
+      if (Array.isArray(messages)) {
+        appendMessages(messages);
+      } else if (data && data.success && Array.isArray(data.messages)) {
+        appendMessages(data.messages);
+      }
+    } catch (e) {
+      console.warn('fetchMessages error', e);
+    }
+  }
+
+  // Send message
   async function sendMessage() {
-    var text = inputEl.value.trim();
+    const text = inputEl.value.trim();
     if (!text) return;
     sendBtn.disabled = true;
     try {
-      var res = await fetch(ENDPOINT_SEND, {
+      const res = await fetch(ENDPOINT_SEND, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text })
       });
-      if (!res.ok) {
-        var t = await res.text();
-        console.error('send_message HTTP error', res.status, t);
-        alert('Ağ hatası (' + res.status + ')');
-        return;
-      }
-      var data = await res.json();
-      if (data.success && data.message) {
-        appendMessages([data.message]); // will not play sound for own message (m.user_id == CURRENT_ID)
+      if (!res.ok) throw new Error('Ağ hatası');
+      const data = await res.json();
+      if (data && data.success && data.message) {
+        appendMessages([data.message]);
+        inputEl.value = '';
+      } else if (data && data.message) {
+        appendMessages([data.message]);
         inputEl.value = '';
       } else {
-        alert(data.error || 'Gönderilemedi');
+        await fetchMessages();
+        inputEl.value = '';
       }
     } catch (e) {
-      console.error('sendMessage fetch error', e);
-      alert('Ağ hatası');
-    } finally { sendBtn.disabled = false; }
+      console.warn('sendMessage error', e);
+      alert('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      sendBtn.disabled = false;
+    }
   }
 
+  // Presence: heartbeat & list
   async function updatePresence() {
-    try { await fetch(ENDPOINT_PRESENCE, { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+    try {
+      await fetch(ENDPOINT_PRESENCE, { method: 'POST', credentials: 'same-origin' });
+    } catch (e) { /* ignore */ }
   }
 
   async function fetchPresenceList() {
     try {
-      var res = await fetch(ENDPOINT_PRESENCE + '?list=1', { credentials: 'same-origin' });
+      const res = await fetch(`${ENDPOINT_PRESENCE}?list=1`, { credentials: 'same-origin' });
       if (!res.ok) return;
-      var data = await res.json();
-      if (data.success && Array.isArray(data.users)) {
-        var onlineCount = data.users.filter(function (u) { return u.online; }).length;
-        userCountEl.textContent = '' + onlineCount;
-      }
-    } catch (e) {}
+      const data = await res.json();
+      let users = [];
+      if (Array.isArray(data.users)) users = data.users;
+      else if (Array.isArray(data.data)) users = data.data;
+      else if (Array.isArray(data)) users = data;
+      else if (data && data.success && Array.isArray(data.users)) users = data.users;
+      updateOnlineList(users);
+    } catch (e) {
+      console.warn('fetchPresenceList error', e);
+    }
   }
 
-  // initial load
-  (function init() {
-    // restore sound preference from localStorage
-    var stored = localStorage.getItem(SOUND_KEY);
-    if (stored === '0') soundEnabled = false;
-    else if (stored === '1') soundEnabled = true;
-    updateSoundButtonUI();
+  function updateOnlineList(users) {
+    onlineListInner.innerHTML = '';
+    if (!users || users.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Çevrimiçi kullanıcı yok';
+      onlineListInner.appendChild(empty);
+    } else {
+      users.forEach(u => {
+        const item = document.createElement('div');
+        item.className = 'online-item';
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        if (u.avatar_url) {
+          const img = document.createElement('img');
+          img.src = u.avatar_url;
+          img.alt = u.username || 'Kullanıcı';
+          avatar.appendChild(img);
+        } else {
+          const initials = (u.username || '').split(' ').map(s => s[0]||'').join('').slice(0,2).toUpperCase();
+          avatar.textContent = initials || '?';
+        }
+        const meta = document.createElement('div');
+        const name = document.createElement('div');
+        name.className = 'user-name';
+        name.textContent = u.username || 'Anonim';
+        const sub = document.createElement('div');
+        sub.className = 'user-meta';
+        sub.textContent = u.status || 'Çevrimiçi';
+        meta.appendChild(name);
+        meta.appendChild(sub);
+        item.appendChild(avatar);
+        item.appendChild(meta);
+        onlineListInner.appendChild(item);
+      });
+    }
+    userCountEl.textContent = String(users ? users.length : 0);
+  }
 
-    fetchMessages();
-    updatePresence();
-    fetchPresenceList();
-    setInterval(fetchMessages, pollInterval);
-    setInterval(updatePresence, presenceInterval);
-    setInterval(fetchPresenceList, presenceInterval + 2000);
+  // Popup show/hide behavior
+  let hideTimeout = null;
+  function showPopup() {
+    clearTimeout(hideTimeout);
+    onlinePopup.setAttribute('aria-hidden', 'false');
+    userCountBtn.setAttribute('aria-expanded', 'true');
+  }
+  function hidePopup() {
+    clearTimeout(hideTimeout);
+    onlinePopup.setAttribute('aria-hidden', 'true');
+    userCountBtn.setAttribute('aria-expanded', 'false');
+  }
+  function hidePopupDelayed() {
+    clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(hidePopup, 300);
+  }
+
+  userCountBtn.addEventListener('mouseenter', showPopup);
+  userCountBtn.addEventListener('focus', showPopup);
+  userCountBtn.addEventListener('mouseleave', hidePopupDelayed);
+  userCountBtn.addEventListener('blur', hidePopup);
+  onlinePopup.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+  onlinePopup.addEventListener('mouseleave', hidePopupDelayed);
+  userCountBtn.addEventListener('click', () => {
+    const expanded = userCountBtn.getAttribute('aria-expanded') === 'true';
+    if (expanded) hidePopup(); else showPopup();
+  });
+
+  // Init
+  (async function init() {
+    try {
+      try {
+        const res = await fetch(ENDPOINT_GET, { credentials: 'same-origin' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.messages)) appendMessages(data.messages);
+          else if (Array.isArray(data)) appendMessages(data);
+        }
+      } catch (e) { /* ignore */ }
+
+      updatePresence();
+      await fetchPresenceList();
+    } finally {
+      setInterval(fetchMessages, pollInterval);
+      setInterval(updatePresence, presenceInterval);
+      setInterval(fetchPresenceList, presenceInterval + 2000);
+    }
   })();
 
 })();

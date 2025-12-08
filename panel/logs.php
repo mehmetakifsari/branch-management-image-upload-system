@@ -83,6 +83,7 @@ $qsPrefix = $qs ? ('?' . $qs . '&') : '?';
 <!doctype html>
 <html lang="tr">
 <head>
+  <?php include __DIR__ . '/includes/chat-init.php'; ?>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <?php require_once __DIR__ . '/../inc/head.php'; ?>

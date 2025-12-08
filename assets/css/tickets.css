@@ -1,0 +1,51 @@
+/* assets/css/tickets.css */
+/* Basit stil iyileştirmeleri: dropzone, preview, thumbnail */
+#dropZone {
+  min-height: 110px;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+#dropZone.dragover {
+  background: #f8f9fa;
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.075);
+}
+#preview .file-thumb {
+  width: 100px;
+  height: 80px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 4px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+#preview .file-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+}
+#preview .file-meta {
+  font-size: 12px;
+  text-align: center;
+  margin-top: 4px;
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#preview .remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 0 6px;
+  cursor: pointer;
+  line-height: 18px;
+  height: 18px;
+}

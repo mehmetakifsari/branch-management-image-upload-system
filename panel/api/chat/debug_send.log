@@ -20,3 +20,4 @@
 2025-12-08T02:07:03+03:00 REQUEST_BODY:{"message":"ç"} COOKIES:{"PHPSESSID":"7c0b5fa00a9ac20c32c9a5c2b4942be9"} SESSION_KEYS:["_csrf","user","_last_activity"]
 2025-12-08T02:07:10+03:00 REQUEST_BODY:{"message":"yupii"} COOKIES:{"PHPSESSID":"62801e873c9ef64f5338dd66a92b0f3e"} SESSION_KEYS:["_csrf","user","_last_activity"]
 2025-12-08T02:07:18+03:00 REQUEST_BODY:{"message":"yerassss"} COOKIES:{"PHPSESSID":"7c0b5fa00a9ac20c32c9a5c2b4942be9"} SESSION_KEYS:["_csrf","user","_last_activity"]
+2025-12-08T02:50:37+03:00 REQUEST_BODY:{"message":"asda"} COOKIES:{"PHPSESSID":"62801e873c9ef64f5338dd66a92b0f3e"} SESSION_KEYS:["_csrf","user","_last_activity"]

@@ -98,6 +98,7 @@ unset($_SESSION['flash_message'], $_SESSION['flash_error']);
 <!doctype html>
 <html lang="tr">
 <head>
+  <?php include __DIR__ . '/includes/chat-init.php'; ?>
   <?php require_once __DIR__ . '/../inc/head.php'; ?>
   <link rel="stylesheet" href="<?php echo asset('/assets/css/panel-users.css'); ?>">
   <title>Kullanıcılar</title>
