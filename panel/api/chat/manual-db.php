@@ -12,9 +12,9 @@ $GLOBALS['MANUAL_DB_ERROR'] = null;
 
 // --- MANUAL CREDENTIALS (DEĞİŞTİRİN) ---
 $db_host = 'localhost';
-$db_name = 'visupanel_p1';
-$db_user = 'visupanel_p1';
-$db_pass = 'o}QawGrmqzP7qH-U';
+$db_name = 'data_name';
+$db_user = 'data_user';
+$db_pass = 'data_pass';
 // -------------------------------------
 
 try {
