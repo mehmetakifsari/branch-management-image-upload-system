@@ -5,9 +5,9 @@
 
 return [
     'db_host' => 'localhost',
-    'db_name' => 'visupanel_p1',
-    'db_user' => 'visupanel_p1',
-    'db_pass' => 'o}QawGrmqzP7qH-U',
+    'db_name' => 'data_name',
+    'db_user' => 'data_user',
+    'db_pass' => 'data_pass',
     // Uygulamanın web dizin yolu (domain.com/pnl2 ise '/pnl2', kökse '')
     'base_url' => '/p1',
 ];
